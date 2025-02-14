@@ -28,6 +28,8 @@ class Settings(BaseSettings):
 
         return env_file
 
+    APP_NAME: str = "SottoBudget"
+
     model_config = SettingsConfigDict(
         env_file=get_env_file(), env_ignore_empty=True, extra="ignore"
     )
