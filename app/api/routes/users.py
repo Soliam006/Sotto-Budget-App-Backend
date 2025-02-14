@@ -1,16 +1,15 @@
 from fastapi import (APIRouter, HTTPException, Depends)
 
-from app.models.user import User, UserRole, Admin, Worker, Client, UserCreate, UserUpdate, UserOut
-
+from app.models.user import User, UserRole, Admin, Worker, Client, UserCreate, UserUpdate, UserOut, UsersOut
+import app.crud.user as crud
 from sqlmodel import Session, select
 from app.core.database import get_session
 
 router = APIRouter()
 
 @router.get("/")
-async def read_users():
-    users = await User.objects.all()
-    return users
+async def read_users(session: Session = Depends(get_session)) -> UsersOut:
+    return crud.get_all_users(session=session)
 
 @router.get("/{user_id}")
 async def read_user(user_id: int):
