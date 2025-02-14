@@ -1,6 +1,4 @@
-from sqlmodel import SQLModel, Field, Relationship
-from enum import Enum
-from typing import Optional, List
+from .deps import *
 
 class UserRole(str, Enum):
     ADMIN = "admin"
@@ -19,6 +17,27 @@ class User(SQLModel, table=True):
     worker_profile: Optional["Worker"] = Relationship(back_populates="user")
     client_profile: Optional["Client"] = Relationship(back_populates="user")
 
+
+class UserBase(SQLModel):
+    name: str
+    email: str
+    role: UserRole
+    language_preference: str = "es"
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdate(UserBase):
+    password: Optional[str]
+
+class UserOut(UserBase):
+    id: int
+
+
+class UsersOut(SQLModel):
+    users: List[UserOut]
+
+
 class Admin(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
@@ -33,3 +52,4 @@ class Client(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="client_profile")
+

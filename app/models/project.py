@@ -1,6 +1,5 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List
-from models.user import Admin, Client
+from .deps import *
+from .user import Admin, Client
 
 class Project(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

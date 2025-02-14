@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     DB_PORT: int = int(os.getenv("DB_PORT", 3306))
     DB_USER: str = os.getenv("DB_USER", "user")
     DB_PASSWORD: str | None = os.getenv("DB_PASSWORD", None)
-    DB_NAME: str | None = os.getenv("DB_NAME", None)
+    DB_NAME: str = os.getenv("DB_NAME", "sottobudget")
+
 
     # 🔹 Configuración para Railway (Producción)
     DATABASE_URL: str | None = os.getenv("DATABASE_URL", None)
@@ -51,7 +52,7 @@ class Settings(BaseSettings):
 
     @computed_field  # type: ignore[misc]
     @property
-    def SQLALCHEMY_URI(self) -> MySQLDsn:
+    def SQLALCHEMY_URI(self) -> str | None | MultiHostUrl:
         """
         Construye la URL de conexión a la base de datos en función del entorno.
         """
@@ -65,7 +66,7 @@ class Settings(BaseSettings):
             password=self.DB_PASSWORD,
             host=self.DB_HOST,
             port=self.DB_PORT,
-            path=f"/{self.DB_NAME}" if self.DB_NAME else "",
+            path=f"{self.DB_NAME}" if self.DB_NAME else "",
         )
 
         return database_uri

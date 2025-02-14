@@ -1,4 +1,3 @@
-"""
 from .core.database import engine
 from .models import SQLModel
 from .api.main import api_router
@@ -39,12 +38,3 @@ def on_startup():
 app.add_event_handler("startup", on_startup)
 
 app.include_router(api_router)
-"""
-
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"message": "¡Hola, FastAPI está funcionando!"}
