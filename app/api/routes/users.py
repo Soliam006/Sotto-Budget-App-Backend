@@ -7,27 +7,43 @@ from app.core.database import get_session
 
 router = APIRouter()
 
-@router.get("/")
-async def read_users(session: Session = Depends(get_session)) -> UsersOut:
-    return crud.get_all_users(session=session)
+@router.get("/", response_model=UserOut)
+def get_first_user(session: Session = Depends(get_session)):
+    result : User = crud.get_user(session=session, user_id=1)
+    if result:
+        return result
+    return {"error": "No users found"}
+
+# Endpoint para obtener todos los usuarios
+@router.get("/all",
+            response_model=UsersOut)
+def get_all_users(session: Session = Depends(get_session)):
+    users = crud.get_all_users(session=session)
+
+    users_out = [
+        UserOut(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            role=user.role,
+            language_preference=user.language_preference
+        ) for user in users
+    ]
+
+    return UsersOut(users=users_out)
+
 
 @router.get("/{user_id}")
-async def read_user(user_id: int):
-    user = await User.objects.get(id=user_id)
+async def read_user(user_id: int, session: Session = Depends(get_session)):
+    user = crud.get_user(session=session, user_id=user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
     return user
+
 
 @router.post("/")
 async def create_user(new_user: UserCreate, session: Session = Depends(get_session)):
-    user = create_user_(session=session, user_create=new_user)
-    return user
-
-
-def create_user_(*, session: Session, user_create: UserCreate) -> User:
-    user = User.model_validate(
-        user_create
-    )
-
-    session.add(user)
-    session.commit()
-    session.refresh(user)
+    user = crud.create_user(session=session, user_create=new_user)
+    if user is None:
+        raise HTTPException(status_code=400, detail="User not created")
     return user
