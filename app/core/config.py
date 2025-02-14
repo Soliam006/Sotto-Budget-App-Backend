@@ -10,13 +10,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """
-        Esta clase trata de encapsular las variables de entorno y la configuracion del backend
+        Esta clase encapsula las variables de entorno y configuración del backend.
     """
 
     def get_env_file() -> str:
         """
-            Check default locations for .env configuration file
-            :return: configuration file
+            Busca el archivo .env en las ubicaciones predeterminadas.
+            :return: ruta del archivo .env
         """
         top_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), '.env')
         if os.path.exists('.env'):
@@ -32,40 +32,44 @@ class Settings(BaseSettings):
         env_file=get_env_file(), env_ignore_empty=True, extra="ignore"
     )
 
-    APP_NAME: str = "UnSet"
-    DB_HOST: str = "localhost"
-    DB_PORT: int = 3306
-    DB_USER: str = "user"
-    DB_PASSWORD: str | None = None
-    DB_NAME: str | None = None
+    # 🔹 Agregamos la variable ENVIRONMENT
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")  # Por defecto, "development"
 
-    # TODO: SECRET_KEY, TOKEN_EXPIRE_TIME variables del .env
-    # Token creation
-    # 60 minutes * 24 hours * 2 days = 2 days
-    TOKEN_EXPIRE_TIME: int = 60 * 24 * 2
+    # Configuración de base de datos
+    DB_HOST: str = os.getenv("DB_HOST", "localhost")
+    DB_PORT: int = int(os.getenv("DB_PORT", 3306))
+    DB_USER: str = os.getenv("DB_USER", "user")
+    DB_PASSWORD: str | None = os.getenv("DB_PASSWORD", None)
+    DB_NAME: str | None = os.getenv("DB_NAME", None)
+
+    # 🔹 Configuración para Railway (Producción)
+    DATABASE_URL: str | None = os.getenv("DATABASE_URL", None)
+
+    # Configuración del token
+    TOKEN_EXPIRE_TIME: int = 60 * 24 * 2  # 2 días
     SECRET_KEY: str = secrets.token_urlsafe(32)
-
-    # Parameters for the tests
-    EMAIL_TEST_USER: str = "test@example.com"
-    USERNAME_TEST_USER: str = "test_user"
-    FIRST_NAME_TEST_USER: str = "test"
-    LAST_NAME_TEST_USER: str = "test"
-    PASSWORD_TEST_USER: str = "password"
 
     @computed_field  # type: ignore[misc]
     @property
     def SQLALCHEMY_URI(self) -> MySQLDsn:
+        """
+        Construye la URL de conexión a la base de datos en función del entorno.
+        """
+        if self.ENVIRONMENT == "production" and self.DATABASE_URL:
+            return self.DATABASE_URL  # Usar Railway en producción
 
+        # Si no estamos en producción, usamos la configuración local
         database_uri = MultiHostUrl.build(
             scheme="mysql+pymysql",
             username=self.DB_USER,
             password=self.DB_PASSWORD,
             host=self.DB_HOST,
             port=self.DB_PORT,
-            path=self.DB_NAME,
+            path=f"/{self.DB_NAME}" if self.DB_NAME else "",
         )
 
         return database_uri
 
 
+# Instancia global de configuración
 settings = Settings()

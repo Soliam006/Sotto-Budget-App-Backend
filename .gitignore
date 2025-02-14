@@ -42,3 +42,4 @@ venv/
 venv/*
 .qodo
 .env
+.env.production
