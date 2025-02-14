@@ -1,5 +1,6 @@
 from .core.database import engine
-from .models import SQLModel
+from sqlmodel import SQLModel
+from app.models.user import User
 from .api.main import api_router
 from .core.config import settings
 
