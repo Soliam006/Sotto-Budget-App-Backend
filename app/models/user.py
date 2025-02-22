@@ -5,9 +5,15 @@ class UserRole(str, Enum):
     WORKER = "worker"
     CLIENT = "client"
 
+class UserBase(SQLModel):
+    username: str
+    email: str
+    role: UserRole
+    language_preference: str = "es"
+
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    username: str = Field(unique=True, index=True)
     email: str = Field(unique=True, index=True)
     password: str  # Hashed password
     role: UserRole
@@ -17,18 +23,15 @@ class User(SQLModel, table=True):
     worker_profile: Optional["Worker"] = Relationship(back_populates="user")
     client_profile: Optional["Client"] = Relationship(back_populates="user")
 
-
-class UserBase(SQLModel):
-    name: str
-    email: str
-    role: UserRole
-    language_preference: str = "es"
-
 class UserCreate(UserBase):
     password: str
 
-class UserUpdate(UserBase):
-    password: Optional[str]
+class UserUpdate(SQLModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[UserRole] = None
+    language_preference: Optional[str] = None
+    password: Optional[str] = None
 
 class UserOut(UserBase):
     id: int
@@ -53,9 +56,21 @@ class Client(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="client_profile")
 
+class UserInDB(UserBase):
+    id: int
+    password: str
+
+
 
 class UserResponse(SQLModel):
     statusCode: int
     data: Optional[User]
     message: str
 
+
+class Token(SQLModel):
+    access_token: str
+    token_type: str
+
+class TokenData(SQLModel):
+    username: str | None = None

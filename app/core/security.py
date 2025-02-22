@@ -2,10 +2,10 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from app.models.user import User
-from app.crud.user import get_user_by_email, get_user_by_username
 from app.core.config import settings
-from sqlmodel import Session
+from sqlmodel import Session, select
+from app.models.user import User, UserCreate, UserUpdate
+from sqlalchemy import or_
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -13,13 +13,23 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Secret key and algorithm for JWT
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 40
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
+def get_user_by_email(*, session: Session, email: str) -> User | None:
+    statement = select(User).where(or_(User.email == email ,User.username == email))
+    session_user = session.exec(statement).first()
+    return session_user
+
+def get_user_by_username(*, session: Session, username: str) -> User | None:
+    statement = select(User).where(User.username == username)
+    session_user = session.exec(statement).first()
+    return session_user
 
 def authenticate_user_with_email(session: Session, email: str, password: str) -> Optional[User]:
     user = get_user_by_email(session=session, email=email)
