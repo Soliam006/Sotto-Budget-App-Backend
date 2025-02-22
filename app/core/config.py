@@ -1,10 +1,6 @@
 import os
 import secrets
-
-from pydantic import (
-    MySQLDsn,
-    computed_field
-)
+from pydantic import MySQLDsn, computed_field, Field
 from pydantic_core import MultiHostUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,44 +9,28 @@ class Settings(BaseSettings):
         Esta clase encapsula las variables de entorno y configuración del backend.
     """
 
-    def get_env_file() -> str:
-        """
-            Busca el archivo .env en las ubicaciones predeterminadas.
-            :return: ruta del archivo .env
-        """
-        top_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), '.env')
-        if os.path.exists('.env'):
-            env_file = '.env'
-        elif os.path.exists(top_path):
-            env_file = top_path
-        else:
-            env_file = '.env'
-
-        return env_file
-
     APP_NAME: str = "SottoBudget"
 
     model_config = SettingsConfigDict(
-        env_file=get_env_file(), env_ignore_empty=True, extra="ignore"
+        env_file=".env", env_ignore_empty=True, extra="ignore"
     )
 
     # 🔹 Agregamos la variable ENVIRONMENT
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")  # Por defecto, "development"
+    ENVIRONMENT: str = Field(default="development", env="ENVIRONMENT")  # "development" por defecto
 
     # Configuración de base de datos
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
-    DB_PORT: int = int(os.getenv("DB_PORT", 3306))
-    DB_USER: str = os.getenv("DB_USER", "user")
-    DB_PASSWORD: str | None = os.getenv("DB_PASSWORD", None)
-    DB_NAME: str = os.getenv("DB_NAME", "sottobudget")
-
+    DB_HOST: str = Field(default="localhost", env="DB_HOST")
+    DB_PORT: int = Field(default=3306, env="DB_PORT")
+    DB_USER: str = Field(default="user", env="DB_USER")
+    DB_PASSWORD: str | None = Field(default=None, env="DB_PASSWORD")
+    DB_NAME: str = Field(default="sottobudget", env="DB_NAME")
 
     # 🔹 Configuración para Railway (Producción)
-    DATABASE_URL: str | None = os.getenv("DATABASE_URL", None)
+    DATABASE_URL: str | None = Field(default=None, env="DATABASE_URL")
 
     # Configuración del token
     TOKEN_EXPIRE_TIME: int = 60 * 24 * 2  # 2 días
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    SECRET_KEY: str = Field(default=os.getenv("SECRET_KEY", secrets.token_urlsafe(32)), env="SECRET_KEY")
 
     @computed_field  # type: ignore[misc]
     @property
