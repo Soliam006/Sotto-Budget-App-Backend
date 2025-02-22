@@ -30,9 +30,6 @@ class UserCreate(UserBase):
 class UserUpdate(UserBase):
     password: Optional[str]
 
-class UserOut(UserBase):
-    id: int
-
 
 class UsersOut(SQLModel):
     users: List[UserOut]
@@ -52,4 +49,10 @@ class Client(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="client_profile")
+
+
+class UserResponse(SQLModel):
+    statusCode: int
+    data: Optional[User]
+    message: str
 

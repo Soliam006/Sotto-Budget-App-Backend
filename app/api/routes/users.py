@@ -1,5 +1,5 @@
 from fastapi import (APIRouter, HTTPException, Depends)
-
+from app.models.response import Response
 from app.models.user import User, UserRole, Admin, Worker, Client, UserCreate, UserUpdate, UserOut, UsersOut
 import app.crud.user as crud
 from sqlmodel import Session, select
@@ -7,12 +7,12 @@ from app.core.database import get_session
 
 router = APIRouter()
 
-@router.get("/", response_model=UserOut)
+@router.get("/", response_model=Response)
 def get_first_user(session: Session = Depends(get_session)):
-    result : User = crud.get_user(session=session, user_id=1)
+    result: User = crud.get_user(session=session, user_id=1)
     if result:
-        return result
-    return {"error": "No users found"}
+        return Response(statusCode=200, data=result, message="User found")
+    return Response(statusCode=404, data=None, message="User not found")
 
 # Endpoint para obtener todos los usuarios
 @router.get("/all",
