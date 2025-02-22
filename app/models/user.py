@@ -30,6 +30,9 @@ class UserCreate(UserBase):
 class UserUpdate(UserBase):
     password: Optional[str]
 
+class UserOut(UserBase):
+    id: int
+
 
 class UsersOut(SQLModel):
     users: List[UserOut]
