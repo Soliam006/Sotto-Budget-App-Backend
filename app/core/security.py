@@ -4,7 +4,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 from sqlmodel import Session, select
-from app.models.user import User, UserCreate, UserUpdate
+from app.models.user import User
 from sqlalchemy import or_
 
 # Password hashing context
