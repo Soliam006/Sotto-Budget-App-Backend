@@ -97,3 +97,11 @@ async def update_user(user_id: int, user: UserUpdate, session: Session = Depends
     if result is None:
         return Response(statusCode=404, data=None, message="User not found")
     return Response(statusCode=200, data=result, message="User updated")
+
+
+@router.delete("/{user_id}", response_model=Response)
+async def delete_user(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    result = crud.delete_user(session=session, user_id=user_id)
+    if result is None:
+        return Response(statusCode=404, data=None, message="User not found")
+    return Response(statusCode=200, data=result, message="User deleted")
