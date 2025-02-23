@@ -80,7 +80,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("token_email/{email}")
+@router.post("/token_email")
 async def login_for_access_token(email: str, password: str, session: Session = Depends(get_session)):
     user = authenticate_user_with_email(session=session, email=email, password=password)
     if not user:
