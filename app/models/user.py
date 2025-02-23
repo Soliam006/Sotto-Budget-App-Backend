@@ -10,6 +10,7 @@ class UserBase(SQLModel):
     email: str
     role: UserRole
     language_preference: str = "es"
+    budget_limit: Optional[float] = None
 
 class UserRegister(SQLModel):
     username: str
@@ -17,6 +18,7 @@ class UserRegister(SQLModel):
     password: str
     role: UserRole = "client"
     language_preference: str = "es"
+    budget_limit: Optional[float] = None
 
 
 class User(SQLModel, table=True):
@@ -26,6 +28,8 @@ class User(SQLModel, table=True):
     password: str  # Hashed password
     role: UserRole
     language_preference: str = "es"
+    budget_limit: Optional[float] = None
+
 
     admin_profile: Optional["Admin"] = Relationship(back_populates="user")
     worker_profile: Optional["Worker"] = Relationship(back_populates="user")
@@ -37,6 +41,7 @@ class UserUpdate(SQLModel):
     role: Optional[UserRole] = None
     language_preference: Optional[str] = None
     password: Optional[str] = None
+    budget_limit: Optional[float] = None
 
 class UserOut(UserBase):
     id: int
