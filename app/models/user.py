@@ -11,6 +11,14 @@ class UserBase(SQLModel):
     role: UserRole
     language_preference: str = "es"
 
+class UserRegister(SQLModel):
+    username: str
+    email: str
+    password: str
+    role: UserRole = "client"
+    language_preference: str = "es"
+
+
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
@@ -22,9 +30,6 @@ class User(SQLModel, table=True):
     admin_profile: Optional["Admin"] = Relationship(back_populates="user")
     worker_profile: Optional["Worker"] = Relationship(back_populates="user")
     client_profile: Optional["Client"] = Relationship(back_populates="user")
-
-class UserCreate(UserBase):
-    password: str
 
 class UserUpdate(SQLModel):
     username: Optional[str] = None

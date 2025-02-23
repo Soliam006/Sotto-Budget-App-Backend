@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import get_current_user, oauth2_scheme
 from app.models.response import Response
-from app.models.user import User, UserRole, Admin, Worker, Client, UserCreate, UserUpdate, UserOut, UsersOut
+from app.models.user import User, UserRole, Admin, Worker, Client, UserRegister, UserUpdate, UserOut, UsersOut
 import app.crud.user as crud
 from sqlmodel import Session, select
 from app.core.database import get_session
@@ -59,8 +59,8 @@ async def read_user(user_id: int, session: Session = Depends(get_session), curre
     return Response(statusCode=200, data=user, message="User found")
 
 
-@router.post("/")
-async def create_user(new_user: UserCreate, session: Session = Depends(get_session))->Response:
+@router.post("/", response_model=Response)
+async def create_user(new_user: UserRegister, session: Session = Depends(get_session)):
     user = crud.create_user(session=session, user_create=new_user)
     if user is None:
         return Response(statusCode=400, data=None, message="Error creating user")
