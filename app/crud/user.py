@@ -3,10 +3,10 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash
-from app.models.user import User, UserCreate, UserUpdate, UserBase, UserOut
+from app.models.user import User, UserUpdate, UserBase, UserOut, UserRegister
 
 
-def create_user(*, session: Session, user_create: UserCreate) -> UserOut:
+def create_user(*, session: Session, user_create: UserRegister) -> UserOut:
     user = User.model_validate(
         user_create,
         update={"password": get_password_hash(user_create.password)}
