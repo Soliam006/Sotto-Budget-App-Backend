@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 
 from app.core.security import get_password_hash
 from app.models.user import User, UserUpdate, UserBase, UserOut, UserRegister, UserRole, Admin, Client, Worker, \
-    ClientAvailability
+    ClientAvailability, ClientOut
 
 
 def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
@@ -49,26 +49,30 @@ def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
         language_preference=new_user.language_preference
     )
 
-def get_user_client(*, session: Session, user_id: int) -> Any:
+
+def get_user_client(*, session: Session, user_id: int) -> ClientOut | None:
     user = session.get(User, user_id)
     try:
         if user:
             client = session.exec(select(Client).where(Client.user_id == user.id, Client.is_deleted == False)).first()
             if client:
-                return client
+                return ClientOut.model_validate(user, update=
+                {
+                    "budget_limit": client.budget_limit,
+                    "client_id": client.id
+                })
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Error al obtener el cliente")
     return None
 
 
-def get_availabilities(*, session: Session, user_id: int) -> Any:
-
-    availabilities = session.exec(select(ClientAvailability).where(ClientAvailability.client_id == user_id, ClientAvailability.is_deleted == False)).all()
+def get_availabilities(*, session: Session, client_id: int) -> Any:
+    availabilities = session.exec(select(ClientAvailability).where(ClientAvailability.client_id == client_id)).all()
     return availabilities
 
 
 def update_user(*, session: Session, user_id: int, user: UserUpdate) -> Any:
-    db_user : User|None = session.get(User, user_id)
+    db_user: User | None = session.get(User, user_id)
 
     if db_user:
         user_data = user.model_dump(exclude_unset=True)
@@ -80,9 +84,10 @@ def update_user(*, session: Session, user_id: int, user: UserUpdate) -> Any:
         session.add(db_user)
         session.commit()
         session.refresh(db_user)
-        return UserOut( id=db_user.id, username=db_user.username,email=db_user.email,
-                        role=db_user.role,language_preference=db_user.language_preference)
+        return UserOut(id=db_user.id, username=db_user.username, email=db_user.email,
+                       role=db_user.role, language_preference=db_user.language_preference)
     return None
+
 
 def delete_user(*, session: Session, user_id: int) -> Any:
     user = session.get(User, user_id)
@@ -91,6 +96,7 @@ def delete_user(*, session: Session, user_id: int) -> Any:
         session.commit()
         return user
     return None
+
 
 def get_user(*, session: Session, user_id: int) -> UserOut:
     user = session.get(User, user_id)
@@ -102,13 +108,16 @@ def get_user(*, session: Session, user_id: int) -> UserOut:
         language_preference=user.language_preference
     )
 
+
 def get_user_in_db(*, session: Session, user_id: int) -> User | None:
     user = session.get(User, user_id)
     return user
 
+
 def get_user_by_username(*, session: Session, username: str) -> Any:
     user = session.exec(select(User).where(User.username == username)).first()
     return user
+
 
 def get_all_users(*, session: Session) -> Any:
     users = session.exec(select(User)).all()

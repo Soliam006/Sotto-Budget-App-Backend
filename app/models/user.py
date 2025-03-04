@@ -70,8 +70,6 @@ class ClientAvailability(SQLModel, table=True):
     start_date: datetime
     end_date: datetime
     created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.UTC))
-    is_deleted: bool = Field(default=False)
     client: Client = Relationship(back_populates="availabilities")
 
 
@@ -86,6 +84,10 @@ class UserResponse(SQLModel):
     data: Optional[User]
     message: str
 
+
+class ClientOut(UserOut):
+    client_id: int
+    budget_limit: Optional[float]
 
 class Token(SQLModel):
     access_token: str

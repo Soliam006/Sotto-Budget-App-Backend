@@ -86,7 +86,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": str(user.id)}, expires_delta=access_token_expires)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return Response(statusCode=200, data={"access_token": access_token, "token_type": "bearer", "user": user
+                                          }, message="User found")
 
 
 @router.post("/token_email")
@@ -98,7 +99,9 @@ async def login_for_access_token(email: str, password: str, session: Session = D
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return Response(status_code=200, data={
+        "access_token": access_token, "token_type": "bearer", "user": user}, message= "User found")
+
 
 # ------------ GETTERS ------------
 @router.get("/get_user_client/{user_id}", response_model=Response)
@@ -107,9 +110,9 @@ async def get_user_client(user_id: int, session: Session = Depends(get_session),
     if client is None:
         return Response(statusCode=404, data=None, message="User not found")
 
-    list_availabilities = crud.get_availabilities(session=session, user_id=client.user_id)
+    list_availabilities = crud.get_availabilities(session=session, client_id=client.client_id)
 
-    return Response(statusCode=200, data={"client": client, "availabilities": list_availabilities}, message="User found")
+    return Response(statusCode=200, data={"user": client, "availabilities": list_availabilities}, message="User found")
 
 
 
