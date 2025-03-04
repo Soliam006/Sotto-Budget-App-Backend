@@ -10,16 +10,13 @@ class UserBase(SQLModel):
     email: str
     role: UserRole
     language_preference: str = "es"
-    budget_limit: Optional[float] = None
 
 class UserRegister(SQLModel):
     username: str
     email: str
     password: str
-    role: UserRole = "client"
+    role: UserRole = UserRole.CLIENT
     language_preference: str = "es"
-    budget_limit: Optional[float] = None
-
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -28,8 +25,7 @@ class User(SQLModel, table=True):
     password: str  # Hashed password
     role: UserRole
     language_preference: str = "es"
-    budget_limit: Optional[float] = None
-
+    is_deleted: bool = Field(default=False)
 
     admin_profile: Optional["Admin"] = Relationship(back_populates="user")
     worker_profile: Optional["Worker"] = Relationship(back_populates="user")
@@ -41,30 +37,43 @@ class UserUpdate(SQLModel):
     role: Optional[UserRole] = None
     language_preference: Optional[str] = None
     password: Optional[str] = None
-    budget_limit: Optional[float] = None
 
 class UserOut(UserBase):
     id: int
 
-
 class UsersOut(SQLModel):
     users: List[UserOut]
 
-
 class Admin(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", unique=True)
+    is_deleted: bool = Field(default=False)
     user: User = Relationship(back_populates="admin_profile")
 
 class Worker(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", unique=True)
+    is_deleted: bool = Field(default=False)
     user: User = Relationship(back_populates="worker_profile")
 
 class Client(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", unique=True)
+    budget_limit: Optional[float] = None
+    is_deleted: bool = Field(default=False)
     user: User = Relationship(back_populates="client_profile")
+    availabilities: List["ClientAvailability"] = Relationship(back_populates="client")
+
+class ClientAvailability(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    client_id: int = Field(foreign_key="client.id")
+    start_date: datetime
+    end_date: datetime
+    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(datetime.UTC))
+    is_deleted: bool = Field(default=False)
+    client: Client = Relationship(back_populates="availabilities")
+
 
 class UserInDB(UserBase):
     id: int

@@ -1,11 +1,11 @@
 from fastapi import (APIRouter, HTTPException, Depends)
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.api.deps import get_current_user, oauth2_scheme
+from app.api.deps import get_current_user, get_current_active_superuser
 from app.models.response import Response
-from app.models.user import User, UserRole, Admin, Worker, Client, UserRegister, UserUpdate, UserOut, UsersOut
+from app.models.user import User, UserRegister, UserUpdate, UserOut, UsersOut
 import app.crud.user as crud
-from sqlmodel import Session, select
+from sqlmodel import Session
 from app.core.database import get_session
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from datetime import timedelta
@@ -58,13 +58,22 @@ async def read_user(user_id: int, session: Session = Depends(get_session), curre
         return Response(statusCode=404, data=None, message="User not found")
     return Response(statusCode=200, data=user, message="User found")
 
+@router.get("/userInDB/{user_id}", response_model=Response)
+async def read_user_in_db(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_active_superuser)):
+    user = crud.get_user_in_db(session=session, user_id=user_id)
+    if user is None:
+        return Response(statusCode=404, data=None, message="User not found")
+    return Response(statusCode=200, data=user, message="User found")
+
 
 @router.post("/", response_model=Response)
 async def create_user(new_user: UserRegister, session: Session = Depends(get_session)):
-    user = crud.create_user(session=session, user_create=new_user)
-    if user is None:
-        return Response(statusCode=400, data=None, message="Error creating user")
-    return Response(statusCode=200, data=user, message="User created")
+    try:
+        new_user = crud.create_user(session=session, user_data=new_user)
+    except Exception as e:
+        return Response(statusCode=400, data=None, message=e.detail)
+
+    return Response(statusCode=200, data=new_user, message="User created")
 
 
 @router.post("/token")
@@ -90,6 +99,32 @@ async def login_for_access_token(email: str, password: str, session: Session = D
     access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+# ------------ GETTERS ------------
+@router.get("/get_user_client/{user_id}", response_model=Response)
+async def get_user_client(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    client = crud.get_user_client(session=session, user_id=user_id)
+    if client is None:
+        return Response(statusCode=404, data=None, message="User not found")
+
+    list_availabilities = crud.get_availabilities(session=session, user_id=client.user_id)
+
+    return Response(statusCode=200, data={"client": client, "availabilities": list_availabilities}, message="User found")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @router.put("/{user_id}", response_model=Response)
 async def update_user(user_id: int, user: UserUpdate, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):

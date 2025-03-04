@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session
-from app.models.user import User, UserOut
+from app.models.user import User, UserOut, UserRole
 from app.crud.user import get_user, get_user_by_id, get_user_by_username
 from app.core.config import settings
 from app.core.database import get_session
@@ -36,4 +36,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
 async def get_current_active_user(current_user: UserOut = Depends(get_current_user)):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+async def get_current_active_superuser(current_user: UserOut = Depends(get_current_user)):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")
     return current_user
