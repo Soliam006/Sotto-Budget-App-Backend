@@ -125,13 +125,13 @@ async def login_for_access_token(credentials: LoginForm,
                                "token_type": "bearer",
                                "user": user_role,
                                "availabilities": list_availabilities},
-                        message="User found")
+                        message="Welcome Back "+user_role.username)
 
     return Response(statusCode=200,
                     data={ "access_token": access_token,
                            "token_type": "bearer",
                            "user": user_role},
-                    message= "User found")
+                    message= "Welcome Back "+user_role.username)
 
 
 @router.post("/token_email")
@@ -158,13 +158,13 @@ async def login_for_access_token(credentials: LoginForm,
                                "token_type": "bearer",
                                "user": user_role,
                                "availabilities": list_availabilities},
-                        message="User found")
+                        message="Welcome Back "+user_role.username)
 
     return Response(statusCode=200,
                     data={ "access_token": access_token,
                            "token_type": "bearer",
                            "user": user_role},
-                    message= "User found")
+                    message= "Welcome Back "+user_role.username)
 
 # ----------------------------- PUTS --------------------------------
 @router.put("/{user_id}", response_model=Response)
