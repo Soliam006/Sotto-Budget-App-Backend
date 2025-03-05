@@ -1,4 +1,4 @@
-from fastapi import (APIRouter, HTTPException, Depends)
+from fastapi import (APIRouter, HTTPException, Depends, Form)
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import get_current_user, get_current_active_superuser
@@ -101,7 +101,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 @router.post("/token_username")
-async def login_for_access_token(username: str, password: str, session: Session = Depends(get_session)):
+async def login_for_access_token(username: str = Form(), password: str = Form(),
+                                 session: Session = Depends(get_session)):
     user = authenticate_user(session=session, username=username, password=password)
     if not user:
         raise HTTPException(statusCode=400, detail="Incorrect username or password")
@@ -132,7 +133,8 @@ async def login_for_access_token(username: str, password: str, session: Session 
 
 
 @router.post("/token_email")
-async def login_for_access_token(email: str, password: str, session: Session = Depends(get_session)):
+async def login_for_access_token(email: str = Form(),password: str = Form(),
+                                 session: Session = Depends(get_session)):
     user = authenticate_user_with_email(session=session, email=email, password=password)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
