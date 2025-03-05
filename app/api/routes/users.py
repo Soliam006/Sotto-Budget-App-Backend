@@ -89,9 +89,10 @@ async def create_user(new_user: UserRegister, session: Session = Depends(get_ses
 
 @router.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
-    user = authenticate_user(session=session, username=form_data.username, password=form_data.password)
-    if not user:
-        return Response(statusCode=400, data=None, message="Incorrect username or password")
+    try:
+        user = authenticate_user(session=session, username=form_data.username, password=form_data.password)
+    except HTTPException as e:
+        return Response(statusCode=e.status_code, data=None, message=e.detail)
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -103,9 +104,10 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @router.post("/token_username", response_model=Response)
 async def login_for_access_token(credentials: LoginForm,
                                  session: Session = Depends(get_session)):
-    user = authenticate_user(session=session, username=credentials.username, password=credentials.password)
-    if not user:
-        return Response(statusCode=400, data=None, message="Incorrect username or password")
+    try:
+        user = authenticate_user(session=session, username=credentials.username, password=credentials.password)
+    except HTTPException as e:
+        return Response(statusCode=e.status_code, data=None, message=e.detail)
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
@@ -135,9 +137,10 @@ async def login_for_access_token(credentials: LoginForm,
 @router.post("/token_email")
 async def login_for_access_token(credentials: LoginForm,
                                  session: Session = Depends(get_session)):
-    user = authenticate_user_with_email(session=session, email=credentials.email, password=credentials.password)
-    if not user:
-        return Response(statusCode=400, data=None, message="Incorrect email or password")
+    try:
+        user = authenticate_user_with_email(session=session, email=credentials.email, password=credentials.password)
+    except HTTPException as e:
+        return Response(statusCode=e.status_code, data=None, message=e.detail)
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)

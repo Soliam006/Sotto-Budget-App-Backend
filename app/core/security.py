@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from fastapi import HTTPException
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -34,13 +35,13 @@ def get_user_by_username(*, session: Session, username: str) -> User | None:
 def authenticate_user_with_email(session: Session, email: str, password: str) -> Optional[User]:
     user = get_user_by_email(session=session, email=email)
     if not user or not verify_password(password, user.password):
-        return None
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
     return user
 
 def authenticate_user(session: Session, username: str, password: str) -> Optional[User]:
     user = get_user_by_username(session=session, username=username)
-    if not user or not verify_password(password, user.password):
-        return None
+    if not user or  not verify_password(password, user.password):
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
     return user
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
