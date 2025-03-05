@@ -4,8 +4,8 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash
-from app.models.user import User, UserUpdate, UserBase, UserOut, UserRegister, UserRole, Admin, Client, Worker, \
-    ClientAvailability, ClientOut
+from app.models.user import User, UserUpdate, UserOut, UserRegister, UserRole, Admin, Client, Worker, \
+    ClientAvailability, ClientOut, AdminOut, WorkerOut
 
 
 def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
@@ -65,6 +65,19 @@ def get_user_client(*, session: Session, user_id: int) -> ClientOut | None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Error al obtener el cliente")
     return None
 
+def get_user_admin(*, session: Session, user_id: int) -> AdminOut | None:
+    user = session.get(User, user_id)
+    if user:
+        admin = session.exec(select(Admin).where(Admin.user_id == user.id)).first()
+        return AdminOut.model_validate(user, update={"admin_id": admin.id})
+    return None
+
+def get_user_worker(*, session: Session, user_id: int) -> WorkerOut | None:
+    user = session.get(User, user_id)
+    if user:
+        worker = session.exec(select(Worker).where(Worker.user_id == user.id)).first()
+        return WorkerOut.model_validate(user, update={"worker_id": worker.id})
+    return None
 
 def get_availabilities(*, session: Session, client_id: int) -> Any:
     availabilities = session.exec(select(ClientAvailability).where(ClientAvailability.client_id == client_id)).all()

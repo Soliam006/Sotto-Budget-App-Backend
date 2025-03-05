@@ -10,10 +10,14 @@ INSERT INTO client (user_id, budget_limit, is_deleted)
 VALUES
     (2, 5000.00, 0),
     (12, 7000.00, 0);
-
 -- Insertar rangos de disponibilidad en 'clientavailability'
 INSERT INTO clientavailability (client_id, start_date, end_date, created_at)
 VALUES
-     (2, '2024-03-10 08:00:00', '2024-03-10 12:00:00', NOW()),
-     (2, '2024-03-11 14:00:00', '2024-03-11 18:00:00', NOW()),
-     (2, '2024-03-12 09:00:00', '2024-03-12 13:00:00', NOW());
+     (1, '2024-03-10 08:00:00', '2024-03-10 12:00:00', NOW()),
+     (1, '2024-03-11 14:00:00', '2024-03-11 18:00:00', NOW()),
+     (1, '2024-03-12 09:00:00', '2024-03-12 13:00:00', NOW());
+
+-- Insertar datos en la tabla 'admin'
+INSERT INTO admin (user_id, is_deleted)
+VALUES
+    (1, 0);

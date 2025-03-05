@@ -89,6 +89,12 @@ class ClientOut(UserOut):
     client_id: int
     budget_limit: Optional[float]
 
+class AdminOut(UserOut):
+    admin_id: int
+
+class WorkerOut(UserOut):
+    worker_id: int
+
 class Token(SQLModel):
     access_token: str
     token_type: str

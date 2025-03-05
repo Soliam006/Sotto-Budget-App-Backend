@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import get_current_user, get_current_active_superuser
 from app.models.response import Response
-from app.models.user import User, UserRegister, UserUpdate, UserOut, UsersOut
+from app.models.user import User, UserRegister, UserUpdate, UserOut, UsersOut, UserRole
 import app.crud.user as crud
 from sqlmodel import Session
 from app.core.database import get_session
@@ -13,7 +13,7 @@ from app.core.security import authenticate_user, authenticate_user_with_email
 
 router = APIRouter()
 
-
+# -------------------------------- GETTERS --------------------------------
 @router.get("/me", response_model=Response)
 async def read_users_me(current_user: UserOut = Depends(get_current_user)):
     return Response(statusCode=200, data=current_user, message="User found")
@@ -65,7 +65,18 @@ async def read_user_in_db(user_id: int, session: Session = Depends(get_session),
         return Response(statusCode=404, data=None, message="User not found")
     return Response(statusCode=200, data=user, message="User found")
 
+@router.get("/get_user_client/{user_id}", response_model=Response)
+async def get_user_client(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    client = crud.get_user_client(session=session, user_id=user_id)
+    if client is None:
+        return Response(statusCode=404, data=None, message="User not found")
 
+    list_availabilities = crud.get_availabilities(session=session, client_id=client.client_id)
+
+    return Response(statusCode=200, data={"user": client, "availabilities": list_availabilities}, message="User found")
+
+
+# ----------------------------- POSTS --------------------------------
 @router.post("/", response_model=Response)
 async def create_user(new_user: UserRegister, session: Session = Depends(get_session)):
     try:
@@ -86,8 +97,38 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": str(user.id)}, expires_delta=access_token_expires)
 
-    return Response(statusCode=200, data={"access_token": access_token, "token_type": "bearer", "user": user
-                                          }, message="User found")
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/token_username")
+async def login_for_access_token(username: str, password: str, session: Session = Depends(get_session)):
+    user = authenticate_user(session=session, username=username, password=password)
+    if not user:
+        raise HTTPException(statusCode=400, detail="Incorrect username or password")
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
+
+    # Si el User está autenticado, buscamos si tiene un perfil de Admin, Worker o Client
+    if user.role == UserRole.ADMIN:
+        user_role = crud.get_user_admin(session=session, user_id=user.id)
+    elif user.role == UserRole.WORKER:
+        user_role = crud.get_user_worker(session=session, user_id=user.id)
+    else:
+        user_role = crud.get_user_client(session=session, user_id=user.id)
+        list_availabilities = crud.get_availabilities(session=session, client_id=user_role.client_id)
+        return Response(statusCode=200,
+                        data={ "access_token": access_token,
+                               "token_type": "bearer",
+                               "user": user_role,
+                               "availabilities": list_availabilities},
+                        message="User found")
+
+    return Response(statusCode=200,
+                    data={ "access_token": access_token,
+                           "token_type": "bearer",
+                           "user": user_role},
+                    message= "User found")
 
 
 @router.post("/token_email")
@@ -99,36 +140,28 @@ async def login_for_access_token(email: str, password: str, session: Session = D
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
 
-    return Response(status_code=200, data={
-        "access_token": access_token, "token_type": "bearer", "user": user}, message= "User found")
+    # Si el User está autenticado, buscamos si tiene un perfil de Admin, Worker o Client
+    if user.role == UserRole.ADMIN:
+        user_role = crud.get_user_admin(session=session, user_id=user.id)
+    elif user.role == UserRole.WORKER:
+        user_role = crud.get_user_worker(session=session, user_id=user.id)
+    else:
+        user_role = crud.get_user_client(session=session, user_id=user.id)
+        list_availabilities = crud.get_availabilities(session=session, client_id=user_role.client_id)
+        return Response(statusCode=200,
+                        data={ "access_token": access_token,
+                               "token_type": "bearer",
+                               "user": user_role,
+                               "availabilities": list_availabilities},
+                        message="User found")
 
+    return Response(statusCode=200,
+                    data={ "access_token": access_token,
+                           "token_type": "bearer",
+                           "user": user_role},
+                    message= "User found")
 
-# ------------ GETTERS ------------
-@router.get("/get_user_client/{user_id}", response_model=Response)
-async def get_user_client(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    client = crud.get_user_client(session=session, user_id=user_id)
-    if client is None:
-        return Response(statusCode=404, data=None, message="User not found")
-
-    list_availabilities = crud.get_availabilities(session=session, client_id=client.client_id)
-
-    return Response(statusCode=200, data={"user": client, "availabilities": list_availabilities}, message="User found")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# ----------------------------- PUTS --------------------------------
 @router.put("/{user_id}", response_model=Response)
 async def update_user(user_id: int, user: UserUpdate, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     result = crud.update_user(session=session, user_id=user_id, user=user)
@@ -136,7 +169,7 @@ async def update_user(user_id: int, user: UserUpdate, session: Session = Depends
         return Response(statusCode=404, data=None, message="User not found")
     return Response(statusCode=200, data=result, message="User updated")
 
-
+# ----------------------------- DELETES --------------------------------
 @router.delete("/{user_id}", response_model=Response)
 async def delete_user(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     result = crud.delete_user(session=session, user_id=user_id)
