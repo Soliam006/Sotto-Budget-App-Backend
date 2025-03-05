@@ -101,3 +101,8 @@ class Token(SQLModel):
 
 class TokenData(SQLModel):
     username: str | None = None
+
+class LoginForm(SQLModel):
+    username: str | None = None
+    email: str | None = None
+    password: str

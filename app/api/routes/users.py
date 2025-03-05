@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import get_current_user, get_current_active_superuser
 from app.models.response import Response
-from app.models.user import User, UserRegister, UserUpdate, UserOut, UsersOut, UserRole
+from app.models.user import User, UserRegister, UserUpdate, UserOut, UsersOut, UserRole, LoginForm
 import app.crud.user as crud
 from sqlmodel import Session
 from app.core.database import get_session
@@ -100,12 +100,12 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/token_username")
-async def login_for_access_token(username: str = Form(), password: str = Form(),
+@router.post("/token_username", response_model=Response)
+async def login_for_access_token(credentials: LoginForm,
                                  session: Session = Depends(get_session)):
-    user = authenticate_user(session=session, username=username, password=password)
+    user = authenticate_user(session=session, username=credentials.username, password=credentials.password)
     if not user:
-        raise HTTPException(statusCode=400, detail="Incorrect username or password")
+        return Response(statusCode=400, data=None, message="Incorrect username or password")
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
@@ -133,11 +133,11 @@ async def login_for_access_token(username: str = Form(), password: str = Form(),
 
 
 @router.post("/token_email")
-async def login_for_access_token(email: str = Form(),password: str = Form(),
+async def login_for_access_token(credentials: LoginForm,
                                  session: Session = Depends(get_session)):
-    user = authenticate_user_with_email(session=session, email=email, password=password)
+    user = authenticate_user_with_email(session=session, email=credentials.email, password=credentials.password)
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+        return Response(statusCode=400, data=None, message="Incorrect email or password")
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
