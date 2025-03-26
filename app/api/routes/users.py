@@ -110,7 +110,7 @@ async def login_for_access_token(credentials: LoginForm,
         return Response(statusCode=e.status_code, data=None, message=e.detail)
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
+    access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=access_token_expires)
 
     # Si el User está autenticado, buscamos si tiene un perfil de Admin, Worker o Client
     if user.role == UserRole.ADMIN:
@@ -143,7 +143,7 @@ async def login_for_access_token(credentials: LoginForm,
         return Response(statusCode=e.status_code, data=None, message=e.detail)
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": user.id}, expires_delta=access_token_expires)
+    access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=access_token_expires)
 
     # Si el User está autenticado, buscamos si tiene un perfil de Admin, Worker o Client
     if user.role == UserRole.ADMIN:
