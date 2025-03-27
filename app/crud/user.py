@@ -9,7 +9,8 @@ from app.models.user import User, UserUpdate, UserOut, UserRegister, UserRole, A
 
 
 def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
-    existing_user = session.exec(select(User).where(User.email == user_data.email)).first()
+    existing_user = session.exec(select(User).where(User.email == user_data.email
+                                                    or User.username == user_data.username)).first()
 
     if existing_user:
         if existing_user.is_deleted:
@@ -19,14 +20,14 @@ def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
             session.commit()
             session.refresh(existing_user)
             return existing_user
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario ya existe")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El usuario ya existe")
 
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        password=hashed_password,
-        role=user_data.role,
+        name=user_data.name, username=user_data.username,
+        email=user_data.email, phone=user_data.phone,
+        password=hashed_password, location=user_data.location,
+        role=user_data.role, description=user_data.description,
         language_preference=user_data.language_preference,
     )
     session.add(new_user)
@@ -42,10 +43,8 @@ def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
 
     session.commit()
     return UserOut(
-        id=new_user.id,
-        username=new_user.username,
-        email=new_user.email,
-        role=new_user.role,
+        id=new_user.id, name=new_user.name, username=new_user.username, email=new_user.email,
+        role=new_user.role, phone=new_user.phone, location=new_user.location, description=new_user.description,
         language_preference=new_user.language_preference
     )
 
@@ -65,12 +64,14 @@ def get_user_client(*, session: Session, user_id: int) -> ClientOut | None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Error al obtener el cliente")
     return None
 
+
 def get_user_admin(*, session: Session, user_id: int) -> AdminOut | None:
     user = session.get(User, user_id)
     if user:
         admin = session.exec(select(Admin).where(Admin.user_id == user.id)).first()
         return AdminOut.model_validate(user, update={"admin_id": admin.id})
     return None
+
 
 def get_user_worker(*, session: Session, user_id: int) -> WorkerOut | None:
     user = session.get(User, user_id)
@@ -79,6 +80,7 @@ def get_user_worker(*, session: Session, user_id: int) -> WorkerOut | None:
         return WorkerOut.model_validate(user, update={"worker_id": worker.id})
     return None
 
+
 def get_availabilities(*, session: Session, client_id: int) -> Any:
     availabilities = session.exec(select(ClientAvailability).where(ClientAvailability.client_id == client_id)).all()
     return availabilities
@@ -86,6 +88,19 @@ def get_availabilities(*, session: Session, client_id: int) -> Any:
 
 def update_user(*, session: Session, user_id: int, user: UserUpdate) -> Any:
     db_user: User | None = session.get(User, user_id)
+
+    # Comprobar si se intenta cambiar el nombre de usuario o el email a uno ya existente
+    if db_user and (user.username or user.email):
+        existing_user = None
+        # Buscar si ya existe un usuario con el nuevo username
+        if user.username:
+            existing_user = session.exec(select(User).where(User.username == user.username)).first()
+        # Si no se ha encontrado por username, buscar por email
+        if not existing_user and user.email:
+            existing_user = session.exec(select(User).where(User.email == user.email)).first()
+
+        if existing_user and existing_user.id != user_id:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El usuario ya existe")
 
     if db_user:
         user_data = user.model_dump(exclude_unset=True)
@@ -97,8 +112,12 @@ def update_user(*, session: Session, user_id: int, user: UserUpdate) -> Any:
         session.add(db_user)
         session.commit()
         session.refresh(db_user)
-        return UserOut(id=db_user.id, username=db_user.username, email=db_user.email,
-                       role=db_user.role, language_preference=db_user.language_preference)
+        return UserOut(
+            id=db_user.id, name=db_user.name, phone=db_user.phone, location=db_user.location,
+            username=db_user.username, email=db_user.email, description=db_user.description,
+            role=db_user.role, language_preference=db_user.language_preference
+        )
+
     return None
 
 
@@ -114,11 +133,8 @@ def delete_user(*, session: Session, user_id: int) -> Any:
 def get_user(*, session: Session, user_id: int) -> UserOut:
     user = session.get(User, user_id)
     return UserOut(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        role=user.role,
-        language_preference=user.language_preference
+        id=user.id, name=user.name, username=user.username, location=user.location, description=user.description,
+        email=user.email, role=user.role, phone=user.phone, language_preference=user.language_preference
     )
 
 

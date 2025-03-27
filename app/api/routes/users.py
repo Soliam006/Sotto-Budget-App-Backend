@@ -2,9 +2,11 @@ from fastapi import (APIRouter, HTTPException, Depends, Form)
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import get_current_user, get_current_active_superuser
+from app.models.follow import FollowOut
 from app.models.response import Response
 from app.models.user import User, UserRegister, UserUpdate, UserOut, UsersOut, UserRole, LoginForm
 import app.crud.user as crud
+import app.crud.follow as follow_crud
 from sqlmodel import Session
 from app.core.database import get_session
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -26,6 +28,7 @@ def get_first_user(session: Session = Depends(get_session)):
         return Response(statusCode=200, data=result, message="User found")
     return Response(statusCode=404, data=None, message="User not found")
 
+
 # Endpoint para obtener todos los usuarios
 @router.get("/all",
             response_model=Response)
@@ -38,11 +41,9 @@ def get_all_users(session: Session = Depends(get_session), current_user: User = 
     try:
         users_out = [
             UserOut(
-                id=user.id,
-                username=user.username,
-                email=user.email,
-                role=user.role,
-                language_preference=user.language_preference
+                id=user.id, name=user.name, username=user.username, email=user.email,
+                role=user.role, phone=user.phone, location=user.location,
+                description=user.description, language_preference=user.language_preference
             ) for user in users
         ]
     except Exception as e:
@@ -58,12 +59,14 @@ async def read_user(user_id: int, session: Session = Depends(get_session), curre
         return Response(statusCode=404, data=None, message="User not found")
     return Response(statusCode=200, data=user, message="User found")
 
+
 @router.get("/userInDB/{user_id}", response_model=Response)
 async def read_user_in_db(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_active_superuser)):
     user = crud.get_user_in_db(session=session, user_id=user_id)
     if user is None:
         return Response(statusCode=404, data=None, message="User not found")
     return Response(statusCode=200, data=user, message="User found")
+
 
 @router.get("/get_user_client/{user_id}", response_model=Response)
 async def get_user_client(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
@@ -75,14 +78,17 @@ async def get_user_client(user_id: int, session: Session = Depends(get_session),
 
     return Response(statusCode=200, data={"user": client, "availabilities": list_availabilities}, message="User found")
 
-
 # ----------------------------- POSTS --------------------------------
+
+
 @router.post("/", response_model=Response)
 async def create_user(new_user: UserRegister, session: Session = Depends(get_session)):
     try:
         new_user = crud.create_user(session=session, user_data=new_user)
+    except HTTPException as e:
+        return Response(statusCode=e.status_code, data=None, message=e.detail)
     except Exception as e:
-        return Response(statusCode=400, data=None, message=e.detail)
+        return Response(statusCode=400, data=None, message=str(e))
 
     return Response(statusCode=200, data=new_user, message="User created")
 
@@ -166,10 +172,18 @@ async def login_for_access_token(credentials: LoginForm,
                            "user": user_role},
                     message= "Welcome Back "+user_role.username)
 
+
 # ----------------------------- PUTS --------------------------------
 @router.put("/{user_id}", response_model=Response)
 async def update_user(user_id: int, user: UserUpdate, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    result = crud.update_user(session=session, user_id=user_id, user=user)
+
+    try:
+        result = crud.update_user(session=session, user_id=user_id, user=user)
+    except HTTPException as e:
+        return Response(statusCode=e.status_code, data=None, message=e.detail)
+    except Exception as e:
+        return Response(statusCode=400, data=None, message=str(e))
+
     if result is None:
         return Response(statusCode=404, data=None, message="User not found")
     return Response(statusCode=200, data=result, message="User updated")

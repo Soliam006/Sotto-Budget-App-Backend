@@ -16,21 +16,26 @@ SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 40
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
 
 def get_user_by_email(*, session: Session, email: str) -> User | None:
     statement = select(User).where(or_(User.email == email ,User.username == email))
     session_user = session.exec(statement).first()
     return session_user
 
+
 def get_user_by_username(*, session: Session, username: str) -> User | None:
     statement = select(User).where(User.username == username)
     session_user = session.exec(statement).first()
     return session_user
+
 
 def authenticate_user_with_email(session: Session, email: str, password: str) -> Optional[User]:
     user = get_user_by_email(session=session, email=email)
@@ -38,11 +43,13 @@ def authenticate_user_with_email(session: Session, email: str, password: str) ->
         raise HTTPException(status_code=401, detail="Could not validate credentials")
     return user
 
+
 def authenticate_user(session: Session, username: str, password: str) -> Optional[User]:
     user = get_user_by_username(session=session, username=username)
     if not user or  not verify_password(password, user.password):
         raise HTTPException(status_code=401, detail="Could not validate credentials")
     return user
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()

@@ -4,6 +4,7 @@ from sqlalchemy import pool
 from pathlib import Path
 from sqlmodel import SQLModel
 from app.models.user import *
+from app.models.follow import *
 from alembic import context
 
 # Importa el motor de base de datos y los modelos
