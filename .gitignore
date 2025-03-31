@@ -44,3 +44,9 @@ venv/*
 .env
 .env.production
 .qodo
+
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
