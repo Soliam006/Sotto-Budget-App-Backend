@@ -42,7 +42,7 @@ def get_all_users(session: Session = Depends(get_session), current_user: User = 
         users_out = [
             UserOut(
                 id=user.id, name=user.name, username=user.username, email=user.email,
-                role=user.role, phone=user.phone, location=user.location,
+                role=user.role, phone=user.phone, location=user.location, created_at=user.created_at,
                 description=user.description, language_preference=user.language_preference
             ) for user in users
         ]

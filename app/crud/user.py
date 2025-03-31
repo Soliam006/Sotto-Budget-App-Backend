@@ -45,7 +45,7 @@ def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
     return UserOut(
         id=new_user.id, name=new_user.name, username=new_user.username, email=new_user.email,
         role=new_user.role, phone=new_user.phone, location=new_user.location, description=new_user.description,
-        language_preference=new_user.language_preference
+        language_preference=new_user.language_preference, created_at=new_user.created_at
     )
 
 
@@ -115,7 +115,7 @@ def update_user(*, session: Session, user_id: int, user: UserUpdate) -> Any:
         return UserOut(
             id=db_user.id, name=db_user.name, phone=db_user.phone, location=db_user.location,
             username=db_user.username, email=db_user.email, description=db_user.description,
-            role=db_user.role, language_preference=db_user.language_preference
+            role=db_user.role, language_preference=db_user.language_preference, created_at=db_user.created_at
         )
 
     return None
@@ -133,8 +133,9 @@ def delete_user(*, session: Session, user_id: int) -> Any:
 def get_user(*, session: Session, user_id: int) -> UserOut:
     user = session.get(User, user_id)
     return UserOut(
-        id=user.id, name=user.name, username=user.username, location=user.location, description=user.description,
-        email=user.email, role=user.role, phone=user.phone, language_preference=user.language_preference
+        id=user.id, name=user.name, username=user.username, location=user.location, 
+        description=user.description, email=user.email, role=user.role, phone=user.phone, 
+        language_preference=user.language_preference, created_at=user.created_at
     )
 
 

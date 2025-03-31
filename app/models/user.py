@@ -78,7 +78,7 @@ class UserOut(UserBase):
         incluye su ID y los campos base. """
     id: int
     # created_at, si quieres exponerlo también:
-    # created_at: Optional[datetime] = None
+    created_at: datetime
 
 
 class UsersOut(SQLModel):
