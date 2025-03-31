@@ -1,3 +1,4 @@
+from app.models.project import Project, ProjectClient
 from .deps import *
 
 class UserRole(str, Enum):
@@ -52,7 +53,7 @@ class User(SQLModel, table=True):
 
     # Control de Soft Delete y timestamps
     is_deleted: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Relaciones con sub-modelos de rol
     admin_profile: Optional["Admin"] = Relationship(back_populates="user")
@@ -94,6 +95,7 @@ class Admin(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", unique=True)
     is_deleted: bool = Field(default=False)
     user: User = Relationship(back_populates="admin_profile")
+    projects: List[Project] = Relationship(back_populates="admin")
 
 
 class Worker(SQLModel, table=True):
@@ -101,6 +103,7 @@ class Worker(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", unique=True)
     is_deleted: bool = Field(default=False)
     user: User = Relationship(back_populates="worker_profile")
+    tasks: List[Task] = Relationship(back_populates="worker")
 
 
 class Client(SQLModel, table=True):
@@ -110,6 +113,9 @@ class Client(SQLModel, table=True):
     is_deleted: bool = Field(default=False)
     user: User = Relationship(back_populates="client_profile")
     availabilities: List["ClientAvailability"] = Relationship(back_populates="client")
+    
+    # Relación many-to-many con Project
+    projects: List["Project"] = Relationship(back_populates="clients", link_model=ProjectClient)
 
 
 class ClientAvailability(SQLModel, table=True):
