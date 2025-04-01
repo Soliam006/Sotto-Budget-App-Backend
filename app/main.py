@@ -32,9 +32,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Crear la base de datos y las tablas
 def on_startup():
     SQLModel.metadata.create_all(engine)
+
 
 app.add_event_handler("startup", on_startup)
 

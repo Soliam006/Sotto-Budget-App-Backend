@@ -1,10 +1,15 @@
-from app.models.project import Project, ProjectClient
-from .deps import *
+# user.py
+from .deps import datetime, Field, Relationship, SQLModel, Enum, Optional, List, timezone
+from typing import List, Optional
+from pydantic import BaseModel
+from .project_client import ProjectClient
+
 
 class UserRole(str, Enum):
     ADMIN = "admin"
     WORKER = "worker"
     CLIENT = "client"
+
 
 class UserBase(SQLModel):
     """ Campos comunes para los esquemas de lectura/salida. """
@@ -95,7 +100,7 @@ class Admin(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", unique=True)
     is_deleted: bool = Field(default=False)
     user: User = Relationship(back_populates="admin_profile")
-    projects: List[Project] = Relationship(back_populates="admin")
+    projects: List["Project"] = Relationship(back_populates="admin")
 
 
 class Worker(SQLModel, table=True):
@@ -103,7 +108,7 @@ class Worker(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", unique=True)
     is_deleted: bool = Field(default=False)
     user: User = Relationship(back_populates="worker_profile")
-    tasks: List[Task] = Relationship(back_populates="worker")
+    tasks: List["Task"] = Relationship(back_populates="worker")
 
 
 class Client(SQLModel, table=True):
@@ -111,10 +116,10 @@ class Client(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", unique=True)
     budget_limit: Optional[float] = None
     is_deleted: bool = Field(default=False)
-    user: User = Relationship(back_populates="client_profile")
+    user: "User" = Relationship(back_populates="client_profile")
     availabilities: List["ClientAvailability"] = Relationship(back_populates="client")
-    
-    # Relación many-to-many con Project
+
+    # Relación many-to-many con Project usando la clase real
     projects: List["Project"] = Relationship(back_populates="clients", link_model=ProjectClient)
 
 
@@ -123,7 +128,7 @@ class ClientAvailability(SQLModel, table=True):
     client_id: int = Field(foreign_key="client.id")
     start_date: datetime
     end_date: datetime
-    created_at: datetime = Field(default_factory=lambda: datetime.now(datetime.UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     client: Client = Relationship(back_populates="availabilities")
 
 
@@ -139,6 +144,15 @@ class UserResponse(SQLModel):
     statusCode: int
     data: Optional[User]
     message: str
+
+
+class ClientSimpleOut(BaseModel):
+    id: int
+    name: str
+    username: str
+
+    class Config:
+        orm_mode = True
 
 
 class ClientOut(UserOut):
