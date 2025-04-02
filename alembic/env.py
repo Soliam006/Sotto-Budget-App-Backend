@@ -5,6 +5,11 @@ from pathlib import Path
 from sqlmodel import SQLModel
 from app.models.user import *
 from app.models.follow import *
+from app.models.project import Project, ProjectOut
+from app.models.expense import Expense, ExpenseOut
+from app.models.project_client import ProjectClient
+from app.models.task import Task, TaskTimeEntry
+
 from alembic import context
 
 # Importa el motor de base de datos y los modelos
