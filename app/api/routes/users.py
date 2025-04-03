@@ -2,9 +2,9 @@ from fastapi import (APIRouter, HTTPException, Depends, Form)
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import get_current_user, get_current_active_superuser
-from app.models.follow import FollowOut
 from app.models.response import Response
-from app.models.user import User, UserRegister, UserUpdate, UserOut, UsersOut, UserRole, LoginForm
+from app.models.user import User, UserRegister, UserUpdate, UserOut, UsersOut, UserRole, LoginForm, ClientOut, \
+    WorkerOut, AdminOut, FollowOut
 import app.crud.user as crud
 import app.crud.follow as follow_crud
 from sqlmodel import Session
@@ -17,7 +17,11 @@ router = APIRouter()
 
 # -------------------------------- GETTERS --------------------------------
 @router.get("/me", response_model=Response)
-async def read_users_me(current_user: UserOut = Depends(get_current_user)):
+async def read_users_me(current_user: UserOut = Depends(get_current_user),
+                        session: Session = Depends(get_session)):
+
+    current_user = enrich_user_with_follow_data(session=session, user=current_user)
+
     return Response(statusCode=200, data=current_user, message="User found")
 
 
@@ -76,9 +80,19 @@ async def get_user_client(user_id: int, session: Session = Depends(get_session),
 
     list_availabilities = crud.get_availabilities(session=session, client_id=client.client_id)
 
+    client = enrich_user_with_follow_data(session=session, user=client)
+
     return Response(statusCode=200, data={"user": client, "availabilities": list_availabilities}, message="User found")
 
 # ----------------------------- POSTS --------------------------------
+def enrich_user_with_follow_data(session: Session, user: UserOut|ClientOut|WorkerOut|AdminOut):
+    followers = follow_crud.get_followers(session=session, user_id=user.id)
+    following = follow_crud.get_following(session=session, user_id=user.id)
+    requests = follow_crud.get_follow_requests(session=session, user_id=user.id)
+    user.followers = [FollowOut.from_follow(f, current_user_id=user.id) for f in followers]
+    user.following = [FollowOut.from_follow(f, current_user_id=user.id) for f in following]
+    user.requests = [FollowOut.from_follow(f, current_user_id=user.id) for f in requests]
+    return user
 
 
 @router.post("/", response_model=Response)
@@ -126,12 +140,17 @@ async def login_for_access_token(credentials: LoginForm,
     else:
         user_role = crud.get_user_client(session=session, user_id=user.id)
         list_availabilities = crud.get_availabilities(session=session, client_id=user_role.client_id)
+
+        user_role = enrich_user_with_follow_data(session=session, user=user_role)
+
         return Response(statusCode=200,
                         data={ "access_token": access_token,
                                "token_type": "bearer",
                                "user": user_role,
                                "availabilities": list_availabilities},
                         message="Welcome Back "+user_role.username)
+
+    user_role = enrich_user_with_follow_data(session=session, user=user_role)
 
     return Response(statusCode=200,
                     data={ "access_token": access_token,
@@ -159,6 +178,7 @@ async def login_for_access_token(credentials: LoginForm,
     else:
         user_role = crud.get_user_client(session=session, user_id=user.id)
         list_availabilities = crud.get_availabilities(session=session, client_id=user_role.client_id)
+        user_role = enrich_user_with_follow_data(session=session, user=user_role)
         return Response(statusCode=200,
                         data={ "access_token": access_token,
                                "token_type": "bearer",
@@ -166,6 +186,7 @@ async def login_for_access_token(credentials: LoginForm,
                                "availabilities": list_availabilities},
                         message="Welcome Back "+user_role.username)
 
+    user_role = enrich_user_with_follow_data(session=session, user=user_role)
     return Response(statusCode=200,
                     data={ "access_token": access_token,
                            "token_type": "bearer",

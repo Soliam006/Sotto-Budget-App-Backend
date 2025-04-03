@@ -6,3 +6,4 @@ class Response(SQLModel):
     statusCode: int
     data: Optional[Any]
     message: str
+    follows: Optional[Any] = None

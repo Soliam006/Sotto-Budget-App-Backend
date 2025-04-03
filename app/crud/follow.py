@@ -1,8 +1,7 @@
 """ Follow CRUD operations. """
 from sqlmodel import Session, select
 
-from app.models.follow import Follow
-from app.models.user import UserOut
+from app.models.user import Follow
 
 
 def get_followers(*, session: Session, user_id: int):
@@ -13,7 +12,7 @@ def get_following(*, session: Session, user_id: int):
     return session.exec(select(Follow).where(Follow.follower_id == user_id, Follow.status == "ACCEPTED")).all()
 
 
-def get_follow_requests(*, session: Session, user_id: int) -> list[UserOut]:
+def get_follow_requests(*, session: Session, user_id: int):
     return session.exec(select(Follow).where(Follow.following_id == user_id, Follow.status == "PENDING")).all()
 
 
