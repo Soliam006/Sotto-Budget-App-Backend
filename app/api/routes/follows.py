@@ -59,26 +59,34 @@ def follow_user(user_id: int, session: Session = Depends(get_session), current_u
 
 @router.post("/accept_follow/{user_id}", response_model=Response)
 def accept_follow_request(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    result = follow_crud.accept_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
-    if result is None:
-        return Response(statusCode=404, data=None, message="Follow request not found")
 
-    return Response(statusCode=200, data=result, message="Follow request accepted")
+    try:
+        result = follow_crud.accept_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
+        if result is None:
+            return Response(statusCode=404, data=None, message="Follow request not found")
+
+        follow_out = FollowOut.from_follow(result, current_user_id=result.follower_id)
+    except Exception as e:
+        return Response(statusCode=400, data=None, message=str(e))
+
+    return Response(statusCode=200, data=follow_out, message="Follow request accepted")
 
 
 @router.post("/reject_follow/{user_id}", response_model=Response)
 def reject_follow_request(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     try:
         result = follow_crud.reject_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
+        if result is None:
+            return Response(statusCode=404, data=None, message="Follow request not found")
+
+        follow_out = FollowOut.from_follow(result, current_user_id=current_user.id)
+
     except HTTPException as e:
         return Response(statusCode=e.status_code, data=None, message=e.detail)
     except Exception as e:
         return Response(statusCode=400, data=None, message=str(e))
 
-    if result is None:
-        return Response(statusCode=404, data=None, message="Follow request not found")
-
-    return Response(statusCode=200, data=result, message="Follow request rejected")
+    return Response(statusCode=200, data=follow_out, message="Follow request rejected")
 
 
 @router.delete("/unfollow/{user_id}", response_model=Response)
