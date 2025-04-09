@@ -19,15 +19,15 @@ def get_follow_requests(*, session: Session, user_id: int):
     return session.exec(select(Follow).where(Follow.following_id == user_id, Follow.status == "PENDING")).all()
 
 
-def follow_user(*, session: Session, follower_id: int, following_id: int) -> Follow:
+def follow_user(*, session: Session, follower_id: int, following_id: int):
     # Check if the follow relationship already exists
     existing_follow = session.exec(
-        select(Follow).
-        where(Follow.follower_id == follower_id, Follow.following_id == following_id)).first()
+        select(Follow).where(Follow.follower_id == follower_id, Follow.following_id == following_id)).first()
     # If it exists and is accepted, return None
     if existing_follow:
-        print("[Follow CRUD] => Follow relationship already exists.")
-        raise HTTPException(status_code=400, detail="Follow relationship already exists.")
+        print("[Follow CRUD] => relationship already exists.")
+        # Devolver directamente el Array de Followes
+        return get_followers(session=session, user_id=follower_id)
 
     # Create a new follow relationship
     new_follow = Follow(follower_id=follower_id, following_id=following_id, status="PENDING")
@@ -37,18 +37,19 @@ def follow_user(*, session: Session, follower_id: int, following_id: int) -> Fol
         session.commit()
         session.refresh(new_follow)
         print("[Follow CRUD] => relationship added successfully.")
-        return new_follow
+        return get_followers(session=session, user_id=follower_id)
     except Exception as e:
         session.rollback()
         print(f"[Follow CRUD] => Failed to add follow relationship: {e}")
         return None
 
 
-def accept_follow_request(*, session: Session, follower_id: int, following_id: int) -> Follow:
+def accept_follow_request(*, session: Session, follower_id: int, following_id: int):
     follow = session.exec(select(Follow).where(Follow.follower_id == follower_id,
                                                Follow.following_id == following_id,
                                                Follow.status == "PENDING"
                                                )).first()
+
     if not follow:
         return None
 
@@ -56,7 +57,7 @@ def accept_follow_request(*, session: Session, follower_id: int, following_id: i
     session.add(follow)
     session.commit()
     session.refresh(follow)
-    return follow
+    return get_followers(session=session, user_id=follower_id)
 
 
 def reject_follow_request(*, session: Session, follower_id: int, following_id: int) -> Follow:

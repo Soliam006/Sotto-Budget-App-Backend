@@ -2,6 +2,7 @@
 from fastapi import HTTPException, status
 from typing import Any
 from sqlmodel import Session, select
+from sqlalchemy import or_
 
 from app.core.security import get_password_hash
 from app.models.user import User, UserUpdate, UserOut, UserRegister, UserRole, Admin, Client, Worker, \
@@ -9,10 +10,18 @@ from app.models.user import User, UserUpdate, UserOut, UserRegister, UserRole, A
 
 
 def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
-    existing_user = session.exec(select(User).where(User.email == user_data.email
-                                                    or User.username == user_data.username)).first()
+    # Usar or_ para combinar condiciones
+    existing_user = session.exec(
+        select(User).where(
+            or_(User.email == user_data.email, User.username == user_data.username)
+        )
+    ).first()
 
+    print("---------------------[User CRUD] => Verifying if user already exists...")
+    print("---------------------[User CRUD] => Existing user: ", existing_user)
     if existing_user:
+        print("[User CRUD] => User already exists.")
+        print("[User CRUD] => User is deleted: ", existing_user.is_deleted)
         if existing_user.is_deleted:
             existing_user.is_deleted = False
             existing_user.password = get_password_hash(user_data.password)
@@ -86,39 +95,107 @@ def get_availabilities(*, session: Session, client_id: int) -> Any:
     return availabilities
 
 
-def update_user(*, session: Session, user_id: int, user: UserUpdate) -> Any:
+def update_user(*, session: Session, user_id: int, user: UserUpdate) -> UserOut:
+    # 1. Obtener el usuario de la base de datos
     db_user: User | None = session.get(User, user_id)
+    if not db_user:
+        raise HTTPException( status_code=status.HTTP_404_NOT_FOUND,  detail="Usuario no encontrado" )
 
-    # Comprobar si se intenta cambiar el nombre de usuario o el email a uno ya existente
-    if db_user and (user.username or user.email):
+    # 2. Verificar si el nuevo username / email ya existen en otro usuario
+    if user.username or user.email:
         existing_user = None
-        # Buscar si ya existe un usuario con el nuevo username
+
         if user.username:
-            existing_user = session.exec(select(User).where(User.username == user.username)).first()
-        # Si no se ha encontrado por username, buscar por email
+            existing_user = session.exec(
+                select(User).where(User.username == user.username)
+            ).first()
+
+        # Si aún no se encontró, buscar por email
         if not existing_user and user.email:
-            existing_user = session.exec(select(User).where(User.email == user.email)).first()
+            existing_user = session.exec(
+                select(User).where(User.email == user.email)
+            ).first()
 
         if existing_user and existing_user.id != user_id:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El usuario ya existe")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El usuario con ese username o email ya existe"
+            )
 
-    if db_user:
-        user_data = user.model_dump(exclude_unset=True)
-        if "password" in user_data:
-            password = get_password_hash(user_data["password"])
-            user_data["password"] = password
+    # 3. Extraer los campos a actualizar (solo los que llegan en la petición)
+    user_data = user.model_dump(exclude_unset=True)
 
-        db_user.sqlmodel_update(user_data)
-        session.add(db_user)
-        session.commit()
-        session.refresh(db_user)
-        return UserOut(
-            id=db_user.id, name=db_user.name, phone=db_user.phone, location=db_user.location,
-            username=db_user.username, email=db_user.email, description=db_user.description,
-            role=db_user.role, language_preference=db_user.language_preference, created_at=db_user.created_at
-        )
+    # 4. Si se incluye contraseña nueva, se hashea
+    if "password" in user_data:
+        user_data["password"] = get_password_hash(user_data["password"])
 
-    return None
+    # 5. Manejo de cambio de rol (soft-delete y posible reactivación si ya existía un perfil)
+    if "role" in user_data:
+        new_role = user_data["role"]
+        old_role = db_user.role
+
+        if new_role != old_role:
+            # a) Soft-delete de perfiles anteriores
+            if db_user.admin_profile:
+                db_user.admin_profile.is_deleted = True
+            if db_user.worker_profile:
+                db_user.worker_profile.is_deleted = True
+            if db_user.client_profile:
+                db_user.client_profile.is_deleted = True
+
+            # b) Asignar el nuevo rol, buscando si el usuario ya tenía un perfil para reactivarlo
+            if new_role == UserRole.ADMIN:
+                # ¿Ya existe un perfil ADMIN soft-deleted para este user?
+                existing_admin = session.exec(
+                    select(Admin).where(Admin.user_id == db_user.id)
+                ).first()
+                if existing_admin:
+                    existing_admin.is_deleted = False
+                    db_user.admin_profile = existing_admin
+                else:
+                    admin = Admin(user_id=db_user.id)
+                    db_user.admin_profile = admin
+                    session.add(admin)
+
+            elif new_role == UserRole.WORKER:
+                existing_worker = session.exec(
+                    select(Worker).where(Worker.user_id == db_user.id)
+                ).first()
+                if existing_worker:
+                    existing_worker.is_deleted = False
+                    db_user.worker_profile = existing_worker
+                else:
+                    worker = Worker(user_id=db_user.id)
+                    db_user.worker_profile = worker
+                    session.add(worker)
+
+            elif new_role == UserRole.CLIENT:
+                existing_client = session.exec(
+                    select(Client).where(Client.user_id == db_user.id)
+                ).first()
+                if existing_client:
+                    existing_client.is_deleted = False
+                    db_user.client_profile = existing_client
+                else:
+                    client = Client(user_id=db_user.id)
+                    db_user.client_profile = client
+                    session.add(client)
+
+    # 6. Actualizar campos en el objeto `User`
+    db_user.sqlmodel_update(user_data)
+    session.add(db_user)
+
+    # 7. Confirmar cambios
+    session.commit()
+    session.refresh(db_user)
+
+    # 8. Retornar datos en el modelo de salida
+    return UserOut(
+        id=user.id, name=user.name, username=user.username, location=user.location,
+        description=user.description, email=user.email, role=user.role, phone=user.phone,
+        language_preference=user.language_preference, created_at=user.created_at
+    )
+
 
 
 def delete_user(*, session: Session, user_id: int) -> Any:

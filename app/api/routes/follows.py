@@ -47,10 +47,11 @@ def get_follow_lists(
 def follow_user(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     if user_id == current_user.id:
         return Response(statusCode=400, data=None, message="You can't follow yourself")
+
     try:
         result = follow_crud.follow_user(session=session, follower_id=current_user.id, following_id=user_id)
-    except HTTPException as e:
-        return Response(statusCode=e.status_code, data=None, message=e.detail)
+    except Exception as e:
+        return Response(statusCode=500, data=None, message=str(e))
 
     if result is None:
         return Response(statusCode=400, data=None, message="Error following user")
@@ -61,15 +62,15 @@ def follow_user(user_id: int, session: Session = Depends(get_session), current_u
 def accept_follow_request(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
 
     try:
-        result = follow_crud.accept_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
-        if result is None:
+        followers = follow_crud.accept_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
+        if followers is None:
             return Response(statusCode=404, data=None, message="Follow request not found")
 
-        follow_out = FollowOut.from_follow(result, current_user_id=result.follower_id)
+        follows_out =  [FollowOut.from_follow(f, current_user_id=current_user.id) for f in followers]
     except Exception as e:
         return Response(statusCode=400, data=None, message=str(e))
 
-    return Response(statusCode=200, data=follow_out, message="Follow request accepted")
+    return Response(statusCode=200, data=follows_out, message="Follow request accepted")
 
 
 @router.post("/reject_follow/{user_id}", response_model=Response)
