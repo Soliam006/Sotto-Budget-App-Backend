@@ -54,8 +54,8 @@ def follow_user(user_id: int, session: Session = Depends(get_session), current_u
         return Response(statusCode=500, data=None, message=str(e))
 
     if result is None:
-        return Response(statusCode=400, data=None, message="Error following user")
-    return Response(statusCode=200, data=result, message="User followed")
+        return Response(statusCode=400, data=None, message="Error sending follow request")
+    return Response(statusCode=200, data=result, message="Request Send")
 
 
 @router.post("/accept_follow/{user_id}", response_model=Response)
