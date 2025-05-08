@@ -8,6 +8,7 @@ from app.core.security import get_password_hash
 from app.models.user import User, UserUpdate, UserOut, UserRegister, UserRole, Admin, Client, Worker, \
     ClientAvailability, ClientOut, AdminOut, WorkerOut
 
+crud_id = "---------------------[User CRUD]"
 
 def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
     # Usar or_ para combinar condiciones
@@ -17,8 +18,8 @@ def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
         )
     ).first()
 
-    print("---------------------[User CRUD] => Verifying if user already exists...")
-    print("---------------------[User CRUD] => Existing user: ", existing_user)
+    print(f"{crud_id} Verifying if user already exists...")
+    print(f"{crud_id} Existing user: ", existing_user)
     if existing_user:
         print("[User CRUD] => User already exists.")
         print("[User CRUD] => User is deleted: ", existing_user.is_deleted)
@@ -49,8 +50,10 @@ def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
         session.add(Client(user_id=new_user.id))
     elif new_user.role == UserRole.WORKER:
         session.add(Worker(user_id=new_user.id))
+        print(f"{crud_id} Worker created- User ID: ", new_user.id)
 
     session.commit()
+
     return UserOut(
         id=new_user.id, name=new_user.name, username=new_user.username, email=new_user.email,
         role=new_user.role, phone=new_user.phone, location=new_user.location, description=new_user.description,
