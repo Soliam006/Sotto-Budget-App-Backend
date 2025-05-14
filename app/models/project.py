@@ -1,12 +1,14 @@
 # project.py
 from .deps import datetime, Field, Relationship, SQLModel, timezone
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Optional, List, Dict
 from enum import Enum
 
 from .expense import ExpenseOut
-from .user import Admin, Client, ClientSimpleOut  # Asegúrate de que Client se pueda importar sin circularidad
-from .project_client import ProjectClient  # Importa la clase real
+from .project_team import ProjectTeamLink
+from .task import TaskOut
+from .user import Admin, Client, ClientSimpleOut, Worker
+from .project_client import ProjectClient
 
 
 class ProjectStatus(str, Enum):
@@ -24,15 +26,65 @@ class Project(SQLModel, table=True):
     start_date: datetime
     end_date: datetime
     status: ProjectStatus = ProjectStatus.ACTIVE
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Relaciones
-    tasks: List["Task"] = Relationship(back_populates="project")
-    expenses: List["Expense"] = Relationship(back_populates="project")
-    admin: Optional[Admin] = Relationship(back_populates="projects")
-    clients: List[Client] = Relationship(back_populates="projects", link_model=ProjectClient)
+    tasks: List["Task"] = Relationship( back_populates="project")
+    expenses: List["Expense"] = Relationship( back_populates="project")
+    admin: Optional[Admin] = Relationship( back_populates="projects")
+    clients: List[Client] = Relationship( back_populates="projects", link_model=ProjectClient)
+    team: List[Worker] = Relationship( back_populates="projects", link_model=ProjectTeamLink)
 
+
+class ProjectCreate(SQLModel):
+    title: str = Field(..., min_length=5, schema_extra= {"example":"App móvil"})
+    description: str = Field(..., schema_extra= {"example":"Desarrollo de aplicación iOS/Android"})
+    limit_budget: float = Field(..., gt=0, schema_extra= {"example":50000.0})
+    location: str = Field(..., schema_extra= {"example":"Madrid, España"})
+    start_date: datetime = Field(..., schema_extra= {"example":"2023-01-01T00:00:00Z"})
+    end_date: datetime = Field(..., schema_extra= {"example":"2023-12-31T23:59:59Z"})
+    # admin_id NO va aquí (se obtiene del usuario autenticado)
+    status: ProjectStatus = Field(default=ProjectStatus.ACTIVE)
+
+    # Validación personalizada para fechas
+    @model_validator(mode="after")
+    def validate_dates(self):
+        if self.end_date <= self.start_date:
+            raise ValueError("La fecha de fin debe ser posterior a la de inicio")
+        return self
+
+class ProjectUpdate(SQLModel):
+    title: Optional[str] = Field(None, min_length=5)
+    description: Optional[str] = Field(None)
+    limit_budget: Optional[float] = Field(None, gt=0)
+    location: Optional[str] = Field(None)
+    start_date: Optional[datetime] = Field(None)
+    end_date: Optional[datetime] = Field(None)
+    status: Optional[ProjectStatus] = Field(None)
+
+    # Validación condicional de fechas
+    @model_validator(mode="after")
+    def validate_dates(self):
+        if self.start_date and self.end_date:
+            if self.end_date <= self.start_date:
+                raise ValueError("La fecha de fin debe ser posterior a la de inicio")
+        return self
+
+
+class TeamMemberOut(SQLModel):
+    id: int
+    name: str
+    role: str  # Rol específico en este proyecto
+    avatar_url: Optional[str]
+
+def team_member_to_out(member: Worker) -> TeamMemberOut:
+    return TeamMemberOut(
+        id=member.id,
+        name=member.user.name if member.user else "Unknown",
+        role=member.specialty if member.specialty else "Team Member",
+        avatar_url=None
+    )
 
 class ProjectOut(BaseModel):
     id: int
@@ -49,6 +101,8 @@ class ProjectOut(BaseModel):
     expenses: List[ExpenseOut]
     expenseCategories: Dict[str, float]
     clients: List[ClientSimpleOut] = []  # Lista de clientes asignados
+    tasks: List[TaskOut] = []  # Añade esta línea
+    team: List[TeamMemberOut] = []
 
     class Config:
         from_attributes = True

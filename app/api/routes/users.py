@@ -1,5 +1,6 @@
 from fastapi import (APIRouter, HTTPException, Depends, Form)
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import JSONResponse
 
 from app.api.deps import get_current_user, get_current_active_superuser
 from app.models.response import Response
@@ -27,9 +28,28 @@ async def read_users_me(current_user: UserOut = Depends(get_current_user),
 
 @router.get("/", response_model=Response)
 def get_first_user(session: Session = Depends(get_session)):
-    result: UserOut = crud.get_user(session=session, user_id=1)
-    if result:
-        return Response(statusCode=200, data=result, message="User found")
+    try:
+        result: UserOut = crud.get_user(session=session, user_id=1)
+        if result:
+            return Response(statusCode=200, data=result, message="User found")
+    except HTTPException as e:
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "statusCode": e.status_code,
+                "data": None,
+                "message": e.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
     return Response(statusCode=404, data=None, message="User not found")
 
 

@@ -3,50 +3,66 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 
-from app.models.task import TaskCreate, TaskOut, Task, task_to_out
+from app.models.project import Project
+from app.models.task import TaskCreate, TaskOut, Task, task_to_out, TaskUpdate
 from app.models.user import UserRole, Worker, Admin
 
 crud_id = "---------------------[Task CRUD]"
 
-"""
-Create a new task with the given task data.
-"""
-def create_task(*, session: Session, task_data: TaskCreate) -> TaskOut | HTTPException:
-    # Usar or_ para combinar condiciones
+def create_task_for_project(
+        session: Session,
+        project_id: int,
+        task_data: TaskCreate,
+        admin_id: int
+) -> TaskOut:
+    """CRUD: Crea una tarea asociada a un proyecto"""
+    # Verificar proyecto existente
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    # Verificar si la tarea ya existe
     existing_task = session.exec(
         select(Task).where(
-            or_(Task.title == task_data.title, Task.description == task_data.description)
+            and_(
+                Task.title == task_data.title,
+                Task.project_id == project_id
+            )
         )
     ).first()
 
-    print(f"{crud_id} Verifying if task already exists...")
-    print(f"{crud_id} Existing task: ", existing_task)
     if existing_task:
-        print(f"{crud_id} Task already exists.")
-        return HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La tarea ya existe")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Task with this title already exists in this project"
+        )
 
-    # Check for the assigned worker
-    worker = session.exec(
-        select(Worker).where(Worker.id == task_data.worker_id)
-    ).first()
-    print(f"{crud_id} Verifying if worker exists. Worker: ", worker)
-
+    # Verificar worker
+    worker = session.get(Worker, task_data.worker_id)
     if not worker or worker.user.role != UserRole.WORKER:
-        raise HTTPException(status_code=404, detail="Trabajador no válido o no existe")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Worker not found or invalid"
+        )
 
+    # Validar fecha
+    if task_data.due_date and task_data.due_date < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Due date cannot be in the past"
+        )
+
+    # Crear tarea
     new_task = Task(
-        title=task_data.title, description=task_data.description,
-        worker_id=task_data.worker_id, due_date=task_data.due_date,
-        project_id=task_data.project_id, admin_id=task_data.admin_id,
-        status=task_data.status
+        **task_data.model_dump(exclude_unset=True),
+        project_id=project_id,
+        admin_id=admin_id
     )
-    if (task_data.due_date is not None and task_data.due_date < datetime.now(timezone.utc)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La fecha de vencimiento no puede ser anterior a la fecha actual")
-
-    if (task_data.due_date is not None):
-        new_task.due_date = task_data.due_date
 
     session.add(new_task)
     session.commit()
@@ -64,3 +80,73 @@ def get_admin_by_user_id(session: Session, user_id: int) -> Admin | HTTPExceptio
     if admin:
         return admin
     raise HTTPException(status_code=404, detail="Admin not found")
+
+
+def update_existing_task(
+        session: Session,
+        task_id: int,
+        task_data: TaskUpdate,
+        project_id: int = None  # Opcional para verificar pertenencia al proyecto
+) -> TaskOut:
+    """Actualiza una tarea existente con validación de proyecto"""
+    # Obtener la tarea
+    query = select(Task).where(Task.id == task_id)
+    if project_id:
+        query = query.where(Task.project_id == project_id)
+
+    task = session.exec(query).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found" + (f" in project {project_id}" if project_id else "")
+        )
+
+    # Validar worker si se está actualizando
+    if task_data.worker_id is not None:
+        worker = session.get(Worker, task_data.worker_id)
+        if not worker or worker.user.role != UserRole.WORKER:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid worker ID"
+            )
+
+    # Validar fecha
+    if task_data.due_date and task_data.due_date < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Due date cannot be in the past"
+        )
+
+    # Actualizar solo los campos proporcionados
+    update_data = task_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(task, key, value)
+
+    task.updated_at = datetime.now(timezone.utc)
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+
+    return task_to_out(task)
+
+
+def delete_project_task(
+        session: Session,
+        project_id: int,
+        task_id: int
+) -> None:
+    """CRUD: Elimina una tarea de un proyecto"""
+    task = session.exec(
+        select(Task)
+        .where(Task.id == task_id)
+        .where(Task.project_id == project_id)
+    ).first()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found in this project"
+        )
+
+    session.delete(task)
+    session.commit()

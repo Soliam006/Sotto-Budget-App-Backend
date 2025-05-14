@@ -1,5 +1,5 @@
 # task.py
-from .deps import datetime, Field, Relationship, SQLModel, Optional, List, timezone
+from .deps import datetime, Field, Relationship, SQLModel, timezone
 from typing import Optional, List
 from enum import Enum
 
@@ -39,22 +39,51 @@ class TaskTimeEntry(SQLModel, table=True):
     task: Optional[Task] = Relationship(back_populates="time_entries")
 
 
-class TaskCreate (SQLModel):
-    title: str
-    description: Optional[str] = None
-    worker_id: int
-    due_date: Optional[datetime] = Field(default=None)
-    project_id: int
-    admin_id: int
-    status: TaskStatus = TaskStatus.TODO
+class TaskCreate(SQLModel):
+    title: str = Field(..., min_length=5, schema_extra={"example": "App móvil"})
+    description: Optional[str] = Field(None, max_length=500, schema_extra={"example":"Crear formulario de login con validación"} )
+    worker_id: int = Field(..., schema_extra={"example":1})
+    due_date: Optional[datetime] = Field(
+        None,
+        schema_extra={"example":"2023-12-31T23:59:59Z"}
+    )
+    # project_id y admin_id NO van aquí (se asignan automáticamente)
+    status: TaskStatus = Field(
+        default=TaskStatus.TODO,
+        schema_extra={"example":"todo"}
+    )
+
+    # Config adicional para OpenAPI
+    class Config:
+        json_schema_extra = {
+            "description": "Datos necesarios para crear una nueva tarea"
+        }
 
 
 class TaskUpdate(SQLModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    worker_id: Optional[int] = None
-    due_date: Optional[datetime] = Field(default=None)
-    status: Optional[TaskStatus] = None
+    title: Optional[str] = Field(
+        None,
+        min_length=3,
+        max_length=100,
+        schema_extra={"example": "Nuevo título de tarea"}
+    )
+    description: Optional[str] = Field(
+        None,
+        max_length=500,
+        schema_extra={"example": "Nueva descripción detallada"}
+    )
+    worker_id: Optional[int] = Field(
+        None,
+        schema_extra={"example": 5}
+    )
+    due_date: Optional[datetime] = Field(
+        None,
+        schema_extra={"example": "2023-12-31T23:59:59Z"}
+    )
+    status: Optional[TaskStatus] = Field(
+        None,
+        schema_extra={"example": "in_progress"}
+    )
 
 
 class TaskOut(SQLModel):

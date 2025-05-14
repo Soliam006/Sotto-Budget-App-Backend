@@ -3,6 +3,7 @@ from .deps import datetime, Field, Relationship, SQLModel, Enum, Optional, List,
 from typing import List, Optional
 from pydantic import BaseModel
 
+from .project_team import ProjectTeamLink
 from .project_client import ProjectClient
 
 
@@ -166,8 +167,15 @@ class Worker(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", unique=True)
     is_deleted: bool = Field(default=False)
+    specialty: Optional[str] = None
     user: User = Relationship(back_populates="worker_profile")
     tasks: List["Task"] = Relationship(back_populates="worker")
+
+    # Relación con proyectos
+    projects: List["Project"] = Relationship(
+        back_populates="team",
+        link_model=ProjectTeamLink
+    )
 
 
 class Client(SQLModel, table=True):

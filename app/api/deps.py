@@ -43,3 +43,13 @@ async def get_current_active_superuser(current_user: UserOut = Depends(get_curre
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")
     return current_user
+
+
+async def get_admin_or_worker_permissions(
+        current_user: UserOut = Depends(get_current_user),
+        session: Session = Depends(get_session)
+):
+    if current_user.role == UserRole.ADMIN or current_user.role == UserRole.WORKER:
+        return current_user
+    else:
+        raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")

@@ -1,14 +1,15 @@
 from typing import Dict
 
-from fastapi import (APIRouter, Depends)
+from fastapi import (APIRouter, Depends, HTTPException)
 from fastapi.responses import JSONResponse
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_active_superuser
 from app.models.expense import ExpenseStatus, ExpenseOut
-from app.models.project import ProjectOut
+from app.models.project import ProjectOut, ProjectCreate, ProjectUpdate, Project, team_member_to_out
 from app.models.response import Response
-from app.models.task import TaskStatus
+from app.models.task import TaskStatus, TaskCreate, task_to_out
 from app.models.user import User, ClientSimpleOut
 import app.crud.project as crud
+import app.crud.task as task_crud
 from sqlmodel import Session
 from app.core.database import get_session
 
@@ -16,9 +17,9 @@ router = APIRouter()
 
 
 # -------------------------------- GETTERS --------------------------------
-@router.get("/projects/{project_id}", response_model=Response)
+@router.get("/{project_id}", response_model=Response, dependencies=[Depends(get_current_user)])
 async def get_project(project_id: int,
-                      current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+                      session: Session = Depends(get_session)):
 
     project = crud.get_project_id(session=session, project_id=project_id)
     if not project:
@@ -50,7 +51,7 @@ async def get_project(project_id: int,
         expense_categories[exp.category] = expense_categories.get(exp.category, 0) + exp.amount
 
     # Preparar la lista de gastos para la respuesta
-    expenses_out = [ExpenseOut.from_orm(exp) for exp in project.expenses]
+    expenses_out = [ExpenseOut.model_validate(exp) for exp in project.expenses]
 
     # Obtener el nombre del Admin (suponiendo que admin.user.name existe)
     admin_name = "Unknown"
@@ -76,6 +77,77 @@ async def get_project(project_id: int,
                         admin=admin_name, limitBudget=project.limit_budget, currentSpent=current_spent,
                         progress=progress, location=project.location, startDate=project.start_date, endDate=project.end_date,
                         status=project.status, expenses=expenses_out, expenseCategories=expense_categories,
-                        clients=clients_out
+                        clients=clients_out, tasks=[task_to_out(t) for t in project.tasks], team=[team_member_to_out(w) for w in project.team]
                     ),
                     message="Project found")
+
+
+
+# --------------------------------- POST ---------------------------------
+@router.post("/create", response_model=Response,
+             dependencies=[Depends(get_current_active_superuser)])
+async def create_project(
+        project: ProjectCreate,
+        session: Session = Depends(get_session)
+):
+    try:
+        new_project = crud.create_project(
+            session=session,
+            project_data=project
+        )
+    except HTTPException as http_exc:
+        return JSONResponse(
+            status_code=http_exc.status_code,
+            content={
+                "statusCode": http_exc.status_code,
+                "data": None,
+                "message": http_exc.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
+
+    return Response(statusCode=200, data=new_project, message="Project created successfully")
+
+
+@router.put("/{project_id}", response_model=Response,
+            dependencies=[Depends(get_current_active_superuser)])
+async def update_project(
+        project_id: int,
+        project: ProjectUpdate,
+        session: Session = Depends(get_session)
+):
+    try:
+        updated_project = crud.update_project(
+            session=session,
+            project_id=project_id,
+            project_data=project
+        )
+    except HTTPException as http_exc:
+        return JSONResponse(
+            status_code=http_exc.status_code,
+            content={
+                "statusCode": http_exc.status_code,
+                "data": None,
+                "message": http_exc.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
+
+    return Response(statusCode=200, data=updated_project, message="Project updated successfully")
+

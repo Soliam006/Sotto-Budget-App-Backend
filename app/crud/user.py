@@ -212,6 +212,9 @@ def delete_user(*, session: Session, user_id: int) -> Any:
 
 def get_user(*, session: Session, user_id: int) -> UserOut:
     user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
     return UserOut(
         id=user.id, name=user.name, username=user.username, location=user.location, 
         description=user.description, email=user.email, role=user.role, phone=user.phone, 
