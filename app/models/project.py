@@ -5,6 +5,7 @@ from typing import Optional, List, Dict
 from enum import Enum
 
 from .expense import ExpenseOut
+from .project_expense import ProjectExpenseLink
 from .project_team import ProjectTeamLink
 from .task import TaskOut
 from .user import Admin, Client, ClientSimpleOut, Worker
@@ -31,8 +32,8 @@ class Project(SQLModel, table=True):
 
     # Relaciones
     tasks: List["Task"] = Relationship( back_populates="project")
-    expenses: List["Expense"] = Relationship( back_populates="project")
     admin: Optional[Admin] = Relationship( back_populates="projects")
+    expenses: List["Expense"] = Relationship( back_populates="project", link_model=ProjectExpenseLink)
     clients: List[Client] = Relationship( back_populates="projects", link_model=ProjectClient)
     team: List[Worker] = Relationship( back_populates="projects", link_model=ProjectTeamLink)
 

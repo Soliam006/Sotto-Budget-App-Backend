@@ -33,12 +33,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
     return user
 
 
-async def get_current_active_user(current_user: UserOut = Depends(get_current_user)):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
-
-
 async def get_current_active_superuser(current_user: UserOut = Depends(get_current_user)):
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")

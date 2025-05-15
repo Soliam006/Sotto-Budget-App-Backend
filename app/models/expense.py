@@ -19,19 +19,45 @@ class Expense(SQLModel, table=True):
     description: str
     amount: float
     status: ExpenseStatus
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     project: Optional["Project"] = Relationship(back_populates="expenses")
 
 
+class ExpenseCreate(SQLModel):
+    expense_date: datetime = Field(alias="date")
+    category: str
+    description: str
+    amount: float = Field(..., gt=0)
+    status: ExpenseStatus = ExpenseStatus.PENDING
+    approved_by: Optional[str] = Field(default=None, foreign_key="user.username")
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class ExpenseUpdate(SQLModel):
+    expense_date: Optional[datetime] = Field(None, alias="date")
+    category: Optional[str] = None
+    description: Optional[str] = None
+    amount: Optional[float] = Field(None, gt=0)
+    status: Optional[ExpenseStatus] = None
+
+    class Config:
+        allow_population_by_field_name = True
+
+
 class ExpenseOut(BaseModel):
     id: int
-    date: datetime
+    expense_date: datetime
     category: str
     description: str
     amount: float
     status: ExpenseStatus
+    updated_at: datetime
+    project_info: Optional[dict] = None
 
     class Config:
         from_attributes = True

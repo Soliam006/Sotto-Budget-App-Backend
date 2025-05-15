@@ -234,6 +234,25 @@ class AdminOut(UserOut):
 class WorkerOut(UserOut):
     worker_id: int
 
+class TeamOut(SQLModel):
+    id: int
+    name: str
+    role: str
+    avatar: Optional[str] = None
+
+def team_out(worker: Worker, projectTeam: ProjectTeamLink) -> TeamOut:
+    """Convierte un Worker y su relación en un objeto de salida"""
+    return TeamOut(
+        id=worker.id,
+        name=worker.user.name,
+        role=projectTeam.role
+    )
+
+
+class WorkerTeamAdd(SQLModel):
+    worker_id: int
+    specialty: Optional[str] = None
+
 
 class Token(SQLModel):
     access_token: str

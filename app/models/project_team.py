@@ -1,5 +1,6 @@
 from .deps import  Field,  SQLModel
 
+
 class ProjectTeamLink(SQLModel, table=True):
     """Tabla intermedia para relación muchos-a-muchos entre Project y Worker"""
     project_id: int = Field(foreign_key="project.id", primary_key=True)

@@ -6,7 +6,7 @@ from sqlmodel import SQLModel
 from app.models.follow import *
 from app.models.user import *
 from app.models.project import *
-from app.models.expense import Expense, ExpenseOut
+from app.models.expense import Expense, ExpenseOut, ExpenseCreate, ExpenseUpdate
 from app.models.project_client import ProjectClient
 from app.models.project_team import ProjectTeamLink
 from app.models.task import *
