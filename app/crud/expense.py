@@ -21,35 +21,40 @@ def create_project_expense(
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-    # Crear el gasto primero
-    expense = Expense(
-        **expense_data.model_dump(exclude_unset=True),
-        project_id=project_id
-    )
-    session.add(expense)
-    session.commit()
-    session.refresh(expense)
+    try:
+        # Crear el gasto primero
+        expense = Expense(
+            **expense_data.model_dump(exclude_unset=True),
+            project_id=project_id
+        )
+        session.add(expense)
+        session.commit() # Guardar los cambios en la base de datos
 
-    # Crear la relación
-    link = ProjectExpenseLink(
-        project_id=project_id,
-        expense_id=expense.id,
-        approved_by=expense_data.approved_by,
-        notes=expense_data.notes
-    )
-    session.add(link)
-    session.commit()
+        # Crear la relación
+        link = ProjectExpenseLink(
+            project_id=project_id,
+            expense_id=expense.id,
+            approved_by=expense_data.approved_by,
+            notes=expense_data.notes
+        )
+        session.add(link)
+        session.commit() # Guardar los cambios en la base de datos
+        session.refresh(expense) # Refrescar el objeto para obtener los datos actualizados
+        session.refresh(link) # Refrescar el objeto
 
-    return expense
+    except Exception as e:
+        session.rollback() # Revierte los cambios en caso de error
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error creating expense, {e}")
 
-def expense_to_out(expense: Expense)-> ExpenseOut:
+    return expense_to_out(expense=expense, link=link)
+
+def expense_to_out(expense: Expense, link: ProjectExpenseLink) -> ExpenseOut:
     expense_dict = expense.model_dump()
-    if expense.projects and len(expense.projects) > 0:
-        link = expense.projects[0]
+    if expense.project:
         expense_dict["project_info"] = {
             "approved_by": link.approved_by,
             "notes": link.notes,
-            "created_at": link.created_at
+            "updated_at": link.updated_at
         }
     return ExpenseOut(**expense_dict)
 
@@ -57,11 +62,12 @@ def get_project_expense(
         session: Session,
         project_id: int,
         expense_id: int
-) -> Expense:
+) -> ExpenseOut:
     # Verificar que el proyecto existe
     project = session.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
     # Verificar que el gasto existe en el proyecto
     expense = session.exec(
         select(Expense)
@@ -70,29 +76,66 @@ def get_project_expense(
     ).first()
 
     if not expense:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expense not found in this project"
-        )
-    return expense
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found in this project")
+
+    # Verificar Link
+    link = session.exec(
+        select(ProjectExpenseLink)
+        .where(ProjectExpenseLink.project_id == project_id)
+        .where(ProjectExpenseLink.expense_id == expense_id)
+    ).first()
+    if not link:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not linked to this project")
+
+    return expense_to_out( expense=expense, link=link)
 
 def update_project_expense(
         session: Session,
         project_id: int,
         expense_id: int,
         expense_data: ExpenseUpdate
-) -> Expense:
-    expense = get_project_expense(session, project_id, expense_id)
+) -> ExpenseOut:
+    # Verificar que el proyecto existe
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    expense = session.exec(
+        select(Expense)
+        .where(Expense.id == expense_id)
+        .where(Expense.project_id == project_id)
+    ).first()
+
+    if not expense:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found")
+    link = session.exec( select(ProjectExpenseLink)
+        .where(ProjectExpenseLink.project_id == project_id)
+        .where(ProjectExpenseLink.expense_id == expense_id)
+    ).first()
+    if not link:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not linked to this project")
 
     update_data = expense_data.model_dump(exclude_unset=True)
+    info_updated = False
     for key, value in update_data.items():
-        setattr(expense, key, value)
+        if hasattr(expense, key):
+            setattr(expense, key, value)
+        elif hasattr(link, key):
+            setattr(link, key, value)
+            info_updated = True
 
     expense.updated_at = datetime.now(timezone.utc)
+    if link and info_updated:
+        link.updated_at = datetime.now(timezone.utc)
+        session.add(link)
+
     session.add(expense)
     session.commit()
     session.refresh(expense)
-    return expense
+    if link:
+        session.refresh(link)
+
+    return expense_to_out(expense=expense, link=link)
 
 def delete_project_expense(
         session: Session,
@@ -101,4 +144,12 @@ def delete_project_expense(
 ) -> None:
     expense = get_project_expense(session, project_id, expense_id)
     session.delete(expense)
+
+    # Eliminar la relación entre el proyecto y el gasto
+    link = session.exec( select(ProjectExpenseLink)
+        .where(ProjectExpenseLink.project_id == project_id)
+        .where(ProjectExpenseLink.expense_id == expense_id)
+    ).first()
+    if link:
+        session.delete(link)
     session.commit()

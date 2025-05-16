@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from sqlalchemy import or_, and_
 
@@ -19,22 +20,25 @@ def create_task_for_project(
 ) -> TaskOut:
     """CRUD: Crea una tarea asociada a un proyecto"""
     # Verificar proyecto existente
-    project = session.get(Project, project_id)
+    project = session.exec(
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            selectinload(Project.team),  # Carga los miembros del equipo relacionados
+            selectinload(Project.tasks)  # Carga las tareas relacionadas
+        )
+    ).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
 
-    # Verificar si la tarea ya existe
-    existing_task = session.exec(
-        select(Task).where(
-            and_(
-                Task.title == task_data.title,
-                Task.project_id == project_id
-            )
-        )
-    ).first()
+    existing_task = next(
+        (t for t in project.tasks if t.title == task_data.title or
+         (t.start_date == task_data.start_date and t.due_date == task_data.due_date)),
+        None
+    )
 
     if existing_task:
         raise HTTPException(
@@ -49,6 +53,14 @@ def create_task_for_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Worker not found or invalid"
         )
+    # Validar que el worker pertenezca al proyecto y esté en su team
+    team = project.team
+    if not any(member.worker_id == task_data.worker_id for member in team):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Worker is not part of the project team"
+        )
+
 
     # Validar fecha
     if task_data.due_date and task_data.due_date < datetime.now(timezone.utc):

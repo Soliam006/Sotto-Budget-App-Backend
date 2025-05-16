@@ -2,12 +2,15 @@ from typing import Dict
 
 from fastapi import HTTPException
 from pydantic import ValidationError
+from requests import session
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from datetime import datetime, timezone
 
+from app.crud.expense import expense_to_out
 from app.models.expense import ExpenseStatus, ExpenseOut
 from app.models.project import Project, ProjectCreate, ProjectUpdate, ProjectOut, team_member_to_out
+from app.models.project_expense import ProjectExpenseLink
 from app.models.project_team import ProjectTeamLink
 from app.models.task import TaskStatus, task_to_out
 from app.models.user import Admin, Worker, team_out, TeamOut, ClientSimpleOut
@@ -188,7 +191,11 @@ def get_project_details(session: Session, project_id: int) -> ProjectOut:
     for exp in project.expenses:
         expense_categories[exp.category] = expense_categories.get(exp.category, 0) + exp.amount
 
-    expenses_out = [ExpenseOut.model_validate(exp) for exp in project.expenses]
+    expenses_out = [expense_to_out(expense=exp,
+                                   link=session.exec(select( ProjectExpenseLink)
+                                                     .where(ProjectExpenseLink.project_id == project.id).
+                                                     where(ProjectExpenseLink.expense_id == exp.id)).first())
+                    for exp in project.expenses]
 
     admin_name = "Unknown"
     if project.admin and project.admin.user:

@@ -31,7 +31,7 @@ class ExpenseCreate(SQLModel):
     description: str
     amount: float = Field(..., gt=0)
     status: ExpenseStatus = ExpenseStatus.PENDING
-    approved_by: Optional[str] = Field(default=None, foreign_key="user.username")
+    approved_by: Optional[str] = "Username"
     notes: Optional[str] = Field(default=None, max_length=500)
 
     class Config:
@@ -44,6 +44,8 @@ class ExpenseUpdate(SQLModel):
     description: Optional[str] = None
     amount: Optional[float] = Field(None, gt=0)
     status: Optional[ExpenseStatus] = None
+    approved_by: Optional[str] = "Username"
+    notes: Optional[str] = Field(default=None, max_length=500)
 
     class Config:
         allow_population_by_field_name = True
