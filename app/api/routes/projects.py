@@ -107,6 +107,43 @@ async def create_project(
     return Response(statusCode=200, data=new_project, message="Project created successfully")
 
 
+@router.post("/add_client/{project_id}", response_model=Response,
+            dependencies=[Depends(get_current_active_superuser)])
+async def add_client_to_project(
+        project_id: int,
+        client_id: int,
+        session: Session = Depends(get_session)
+):
+    try:
+        updated_project = crud.add_client_to_project(
+            session=session,
+            project_id=project_id,
+            client_id=client_id
+        )
+    except HTTPException as http_exc:
+        return JSONResponse(
+            status_code=http_exc.status_code,
+            content={
+                "statusCode": http_exc.status_code,
+                "data": None,
+                "message": http_exc.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
+
+    return Response(statusCode=200, data=updated_project, message="Client added to project successfully")
+
+
+# --------------------------------- PUT ---------------------------------
+
 @router.put("/{project_id}", response_model=Response,
             dependencies=[Depends(get_current_active_superuser)])
 async def update_project(

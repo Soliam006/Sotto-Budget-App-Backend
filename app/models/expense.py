@@ -23,7 +23,7 @@ class Expense(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     project: Optional["Project"] = Relationship(back_populates="expenses")
-    activities: List["ClientActivity"] = Relationship(back_populates="expense")
+    activities: List["Activity"] = Relationship(back_populates="expense")
 
 
 class ExpenseCreate(SQLModel):
@@ -32,7 +32,7 @@ class ExpenseCreate(SQLModel):
     description: str
     amount: float = Field(..., gt=0)
     status: ExpenseStatus = ExpenseStatus.PENDING
-    approved_by: Optional[str] = "Username"
+    approved_by: Optional[str] = None
     notes: Optional[str] = Field(default=None, max_length=500)
 
     class Config:

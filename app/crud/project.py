@@ -9,10 +9,11 @@ from datetime import datetime, timezone
 from app.crud.expense import expense_to_out
 from app.models.expense import ExpenseStatus
 from app.models.project import Project, ProjectCreate, ProjectUpdate, ProjectOut, team_member_to_out
+from app.models.project_client import ProjectClient
 from app.models.project_expense import ProjectExpenseLink
 from app.models.project_team import ProjectTeamLink
 from app.models.task import TaskStatus, task_to_out
-from app.models.user import Admin, Worker, team_out, TeamOut, ClientSimpleOut
+from app.models.user import Admin, Client, Worker, team_out, TeamOut, ClientSimpleOut
 
 
 def get_project_id(*, session: Session, project_id: int) -> Project | None:
@@ -61,6 +62,49 @@ def create_project(*, session: Session, project_data: ProjectCreate, admin_id: i
     except Exception as e:
         session.rollback()  # Revierte los cambios en caso de error inesperado
         raise HTTPException(status_code=500, detail=str(e))
+
+def add_client_to_project( 
+        session: Session,
+        project_id: int,
+        client_id: int
+) -> ProjectClient:
+    
+    # Verifica si el proyecto existe
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    # Verifica que el cliente exista
+    client = session.get(Client, client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Verifica si el cliente ya está asignado al proyecto
+    existing_link = session.exec(
+        select(ProjectClient)
+        .where(ProjectClient.project_id == project_id)
+        .where(ProjectClient.client_id == client_id)
+    ).first()
+
+    if existing_link:
+        raise HTTPException(status_code=400, detail="Client already in project")
+
+    # Crea la relación entre el proyecto y el cliente
+    new_link = ProjectClient(
+        project_id=project_id,
+        client_id=client_id
+    )
+
+    session.add(new_link)  # Agrega la relación a la sesión
+    session.commit()  # Guarda los cambios en la base de datos
+    session.refresh(new_link)  # Refresca el objeto para obtener los datos actualizados
+
+    return new_link
+
+
 
 
 def update_project(*, session: Session, project_id: int, project_data: ProjectUpdate) -> Project:

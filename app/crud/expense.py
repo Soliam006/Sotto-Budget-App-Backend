@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from starlette import status
 
-from app.crud.notification import notify_expense_deletion, notify_expense_update
+from app.crud.notification import notify_expense_deletion, notify_expense_update, send_expense_notifications
 from app.models.expense import ExpenseStatus, ExpenseCreate, Expense, ExpenseUpdate, ExpenseOut
 from app.models.project import Project
 from app.models.project_expense import ProjectExpenseLink
@@ -16,7 +16,8 @@ from app.models.project_expense import ProjectExpenseLink
 def create_project_expense(
         session: Session,
         project_id: int,
-        expense_data: ExpenseCreate):
+        expense_data: ExpenseCreate) -> ExpenseOut:
+    """CRUD: Crea un gasto asociado a un proyecto"""
     # Verificar que el proyecto existe
     project = session.get(Project, project_id)
     if not project:
@@ -42,21 +43,39 @@ def create_project_expense(
         session.commit() # Guardar los cambios en la base de datos
         session.refresh(expense) # Refrescar el objeto para obtener los datos actualizados
         session.refresh(link) # Refrescar el objeto
+        print(f"----------------!!!!!!!!!!!!!!!!!!!_------------------------Link: {link}")
+        if link:
+            send_expense_notifications(
+                session=session,
+                project_id=project_id,
+                expense=expense,
+            )
 
     except Exception as e:
         session.rollback() # Revierte los cambios en caso de error
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error creating expense, {e}")
-
+    
     return expense_to_out(expense=expense, link=link)
 
 def expense_to_out(expense: Expense, link: ProjectExpenseLink) -> ExpenseOut:
-    expense_dict = expense.model_dump()
-    if expense.project:
-        expense_dict["project_info"] = {
-            "approved_by": link.approved_by,
-            "notes": link.notes,
-            "updated_at": link.updated_at
+    """
+    Combines Expense and ProjectExpenseLink data into an ExpenseOut schema.
+    """
+    expense_dict = {
+        "id": expense.id,
+        "expense_date": expense.expense_date,
+        "amount": expense.amount,
+        "category": expense.category,
+        "description": expense.description,
+        "status": expense.status,
+        "created_at": expense.created_at,
+        "updated_at": expense.updated_at,
+        "project_info": {
+            "approved_by": getattr(link, "approved_by", None),
+            "notes": getattr(link, "notes", None),
+            "updated_at": getattr(link, "updated_at", None)
         }
+    }
     return ExpenseOut(**expense_dict)
 
 def get_project_expense(

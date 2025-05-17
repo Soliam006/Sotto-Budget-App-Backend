@@ -9,7 +9,7 @@ from sqlalchemy import or_, and_
 from app.models.project import Project
 from app.models.task import TaskCreate, TaskOut, Task, task_to_out, TaskUpdate
 from app.models.user import UserRole, Worker, Admin
-from app.crud.notification import notify_task_deletion, notify_task_update
+from app.crud.notification import notify_task_deletion, notify_task_update, send_task_notifications
 
 crud_id = "---------------------[Task CRUD]"
 
@@ -36,8 +36,7 @@ def create_task_for_project(
         )
 
     existing_task = next(
-        (t for t in project.tasks if t.title == task_data.title or
-         (t.start_date == task_data.start_date and t.due_date == task_data.due_date)),
+        (t for t in project.tasks if t.title == task_data.title),
         None
     )
 
@@ -80,6 +79,12 @@ def create_task_for_project(
     session.add(new_task)
     session.commit()
     session.refresh(new_task)
+
+    send_task_notifications(
+        session=session,
+        task=new_task,
+        project_id=project_id
+    )
 
     return task_to_out(new_task)
 

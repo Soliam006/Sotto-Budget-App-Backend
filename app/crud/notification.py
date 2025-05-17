@@ -1,67 +1,54 @@
 from typing import List
+from fastapi import HTTPException
 from sqlmodel import Session, select
 
-from app.models.expense import Expense, ExpenseCreate
+from app.models.expense import Expense
 from app.models.project_client import ProjectClient
 from app.models.project_expense import ProjectExpenseLink
 from app.models.task import Task
 from app.models.user import  Client
-from app.models.notifications import ActivityService, ActivityType, ClientActivity
+from app.models.notifications import ActivityService, ActivityType, Activity
 
 def send_task_notifications(
     session: Session,
     task: Task,
     project_id: int
-) -> List[ClientActivity]:
-    
-    # Obtener clientes del proyecto
-    client_ids = session.exec(
-        select(Client.id)
-        .join(ProjectClient)
-        .where(ProjectClient.project_id == project_id)
-    ).all()
+) -> List[Activity]:
     
     # Registrar actividad
-    activities = ActivityService(session).log_activity(
+    activity = ActivityService(session).log_activity(
         activity_type=ActivityType.TASK_CREATED,
         project_id=project_id,
-        client_ids=client_ids,
         task_id=task.id,
-        metadata={
+        metadatas={
             "task_title": task.title,
             "due_date": task.due_date.isoformat() if task.due_date else None,
-            "assignee": task.worker.name if task.worker else None
+            "assignee": task.worker.user.username if task.worker else None
         }
     )
     
-    return activities
+    return activity
 
 
 def send_expense_notifications(
     session: Session,
     expense: Expense,
     project_id: int
-) -> List[ClientActivity]:
+) -> List[Activity]:
     
-    client_ids = session.exec(
-        select(Client.id)
-        .join(ProjectClient)
-        .where(ProjectClient.project_id == project_id)
-    ).all()
     
-    activities = ActivityService(session).log_activity(
+    activity = ActivityService(session).log_activity(
         activity_type=ActivityType.EXPENSE_ADDED,
         project_id=project_id,
-        client_ids=client_ids,
         expense_id=expense.id,
-        metadata={
+        metadatas={
             "amount": expense.amount,
             "category": expense.category,
             "status": expense.status
         }
     )
     
-    return activities
+    return activity
 
 
 def get_client_activities(
@@ -69,36 +56,51 @@ def get_client_activities(
     client_id: int,
     is_read: bool = None,
     activity_type: ActivityType = None
-) -> List[ClientActivity]:
+) -> List[Activity]:
     
-    query = select(ClientActivity).where(ClientActivity.client_id == client_id)
-    
+    """Obtiene actividades de un cliente específico"""
+    # Verificar que el cliente existe
+    client = session.get(Client, client_id)
+    if not client:
+        raise HTTPException(
+            status_code=404,
+            detail="Client not found"
+        )
+    # Buscar Proyectos asociados al cliente
+    projects = session.exec(
+        select(ProjectClient.project_id)
+        .where(ProjectClient.client_id == client_id)
+    ).all()
+    if not projects:
+        raise HTTPException(
+            status_code=404,
+            detail="No projects found for this client"
+        )
+    # Filtrar actividades por cliente y tipo
+    activities = session.exec(
+        select(Activity)
+        .where(Activity.project_id.in_(projects))
+    ).all()
+
+    # Filtrar actividades por estado de lectura y tipo
     if is_read is not None:
-        query = query.where(ClientActivity.is_read == is_read)
-    
+        activities = [activity for activity in activities if activity.is_read == is_read]
     if activity_type is not None:
-        query = query.where(ClientActivity.activity_type == activity_type)
-    
-    activities = session.exec(query).all()
-    
+        activities = [activity for activity in activities if activity.activity_type == activity_type]
+    if not activities:
+        raise HTTPException(
+            status_code=404,
+            detail="No activities found for this client"
+        )
     return activities
 
-
-def get_project_client_ids(session: Session, project_id: int) -> List[int]:
-    """Obtiene IDs de clientes asociados a un proyecto"""
-    return session.exec(
-        select(Client.id)
-        .join(ProjectClient)
-        .where(ProjectClient.project_id == project_id)
-    ).all()
 
 def notify_task_deletion(session: Session, project_id: int, task_data: dict):
     """Notifica sobre eliminación de tarea"""
     ActivityService(session).log_activity(
         activity_type=ActivityType.TASK_DELETED,
         project_id=project_id,
-        client_ids=get_project_client_ids(session, project_id),
-        metadata={
+        metadatas={
             "deleted_task": task_data
         }
     )
@@ -108,9 +110,8 @@ def notify_task_update(session: Session, task: Task, changes: dict):
     ActivityService(session).log_activity(
         activity_type=ActivityType.TASK_UPDATED,
         project_id=task.project_id,
-        client_ids=get_project_client_ids(session, task.project_id),
         task_id=task.id,
-        metadata={
+        metadatas={
             "changes": changes,
             "new_status": task.status,
             "new_due_date": task.due_date.isoformat() if task.due_date else None
@@ -123,9 +124,8 @@ def notify_expense_update(session: Session, expense: Expense, update_data: dict,
     ActivityService(session).log_activity(
         activity_type=ActivityType.EXPENSE_UPDATED,
         project_id=expense.project_id,
-        client_ids=get_project_client_ids(session, expense.project_id),
         expense_id=expense.id,
-        metadata={
+        metadatas={
                 "changes": {
                     k: {
                         "old": getattr(original_expense if hasattr(expense, k) else original_link, k),
@@ -143,8 +143,7 @@ def notify_expense_deletion(session: Session, project_id: int, expense_data: dic
     ActivityService(session).log_activity(
         activity_type=ActivityType.EXPENSE_DELETED,
         project_id=project_id,
-        client_ids=get_project_client_ids(session, project_id),
-        metadata={
+        metadatas={
             "deleted_expense": expense_data
         }
     )
