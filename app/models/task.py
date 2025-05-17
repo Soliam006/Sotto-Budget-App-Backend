@@ -26,6 +26,7 @@ class Task(SQLModel, table=True):
     project: Optional["Project"] = Relationship(back_populates="tasks")
     worker: Optional["Worker"] = Relationship(back_populates="tasks")
     time_entries: List["TaskTimeEntry"] = Relationship(back_populates="task")
+    activities: List["ClientActivity"] = Relationship(back_populates="task")
 
 
 class TaskTimeEntry(SQLModel, table=True):

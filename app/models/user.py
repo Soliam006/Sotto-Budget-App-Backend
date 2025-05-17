@@ -188,6 +188,7 @@ class Client(SQLModel, table=True):
 
     # Relación many-to-many con Project usando la clase real
     projects: List["Project"] = Relationship(back_populates="clients", link_model=ProjectClient)
+    activities: List["ClientActivity"] = Relationship(back_populates="client")
 
 
 class ClientAvailability(SQLModel, table=True):

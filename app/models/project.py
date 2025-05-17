@@ -36,6 +36,7 @@ class Project(SQLModel, table=True):
     expenses: List["Expense"] = Relationship( back_populates="project", link_model=ProjectExpenseLink)
     clients: List[Client] = Relationship( back_populates="projects", link_model=ProjectClient)
     team: List[Worker] = Relationship( back_populates="projects", link_model=ProjectTeamLink)
+    activities: List["ClientActivity"] = Relationship(back_populates="project")
 
 
 class ProjectCreate(SQLModel):

@@ -9,6 +9,7 @@ from sqlalchemy import or_, and_
 from app.models.project import Project
 from app.models.task import TaskCreate, TaskOut, Task, task_to_out, TaskUpdate
 from app.models.user import UserRole, Worker, Admin
+from app.crud.notification import notify_task_deletion, notify_task_update
 
 crud_id = "---------------------[Task CRUD]"
 
@@ -128,6 +129,8 @@ def update_existing_task(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Due date cannot be in the past"
         )
+    # Capturar cambios antes de actualizar
+    original_task = task.model_copy()
 
     # Actualizar solo los campos proporcionados
     update_data = task_data.model_dump(exclude_unset=True)
@@ -138,6 +141,18 @@ def update_existing_task(
     session.add(task)
     session.commit()
     session.refresh(task)
+    
+    # Notificar cambios relevantes
+    if update_data:  # Solo si hubo cambios reales
+        notify_task_update(
+            session=session,
+            task=task,
+            changes={
+                k: {"old": getattr(original_task, k), "new": v}
+                for k, v in update_data.items()
+                if getattr(original_task, k) != v
+            }
+        )
 
     return task_to_out(task)
 
@@ -159,6 +174,19 @@ def delete_project_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found in this project"
         )
-
+    # Guardar datos antes de borrar
+    task_data = {
+        "id": task.id,
+        "title": task.title,
+        "status": task.status
+    }
+    
     session.delete(task)
     session.commit()
+    
+    # Notificar eliminación
+    notify_task_deletion(
+        session=session,
+        project_id=project_id,
+        task_data=task_data
+    )

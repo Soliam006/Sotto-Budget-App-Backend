@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from starlette import status
 
+from app.crud.notification import notify_expense_deletion, notify_expense_update
 from app.models.expense import ExpenseStatus, ExpenseCreate, Expense, ExpenseUpdate, ExpenseOut
 from app.models.project import Project
 from app.models.project_expense import ProjectExpenseLink
@@ -116,6 +117,9 @@ def update_project_expense(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not linked to this project")
 
     update_data = expense_data.model_dump(exclude_unset=True)
+    original_expense = expense.model_copy()
+
+    # Verificar que el gasto no esté aprobado
     info_updated = False
     for key, value in update_data.items():
         if hasattr(expense, key):
@@ -125,6 +129,8 @@ def update_project_expense(
             info_updated = True
 
     expense.updated_at = datetime.now(timezone.utc)
+    original_link = link.model_copy()
+
     if link and info_updated:
         link.updated_at = datetime.now(timezone.utc)
         session.add(link)
@@ -134,6 +140,21 @@ def update_project_expense(
     session.refresh(expense)
     if link:
         session.refresh(link)
+
+    # Notificar cambios
+    if update_data:
+        notify_expense_update(
+            session=session,
+            expense=expense,
+            update_data={
+                k: {"old": getattr(expense, k), "new": v}
+                for k, v in update_data.items()
+                if getattr(expense, k) != v
+            },
+            original_expense=original_expense,
+            original_link=original_link,
+            link=link
+        )
 
     return expense_to_out(expense=expense, link=link)
 
@@ -150,6 +171,21 @@ def delete_project_expense(
         .where(ProjectExpenseLink.project_id == project_id)
         .where(ProjectExpenseLink.expense_id == expense_id)
     ).first()
+    # Guardar datos antes de borrar
+    expense_data = {
+        "id": expense.id,
+        "amount": expense.amount,
+        "category": expense.category
+    }
+    
+    session.delete(expense)
     if link:
         session.delete(link)
     session.commit()
+    
+    # Notificar eliminación
+    notify_expense_deletion(
+        session=session,
+        project_id=project_id,
+        expense_data=expense_data
+    )

@@ -23,6 +23,7 @@ class Expense(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     project: Optional["Project"] = Relationship(back_populates="expenses")
+    activities: List["ClientActivity"] = Relationship(back_populates="expense")
 
 
 class ExpenseCreate(SQLModel):
