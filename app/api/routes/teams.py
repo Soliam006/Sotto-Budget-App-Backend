@@ -1,19 +1,18 @@
 from fastapi import (APIRouter, HTTPException, Depends)
 from fastapi.responses import JSONResponse
 
-from app.api.deps import get_admin_or_worker_permissions, get_current_active_superuser
+from app.api.deps import get_current_active_superuser
 from app.models.response import Response
 from sqlmodel import Session
 from app.core.database import get_session
-from app.models.user import User, WorkerTeamAdd
+from app.models.user import WorkerTeamAdd
 import app.crud.project as crud_project
 
 router = APIRouter()
 
 
 @router.post(
-    "/{project_id}",
-    response_model=Response, dependencies=[Depends(get_current_active_superuser)]
+    "/{project_id}", response_model=Response,  dependencies=[Depends(get_current_active_superuser)]
 )
 def add_team_member(
         project_id: int,
@@ -30,7 +29,7 @@ def add_team_member(
         )
 
         return Response(
-            status_code=200,
+            statusCode=200,
             data=team_out,
             message="Worker added to project successfully"
         )
@@ -54,8 +53,7 @@ def add_team_member(
             }
         )
 
-@router.delete("/{project_id}/{worker_id}",
-                response_model=Response,
+@router.delete("/{project_id}/{worker_id}", response_model=Response, 
                 dependencies=[Depends(get_current_active_superuser)])
 def remove_team_member(
         project_id: int,
@@ -69,9 +67,23 @@ def remove_team_member(
             project_id=project_id,
             worker_id=worker_id
         )
-        return Response(status_code=204, data=None, message="Worker removed from project successfully")
+        return Response(statusCode=204, data=None, message="Worker removed from project successfully")
 
     except HTTPException as e:
-        raise e
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "statusCode": e.status_code,
+                "data": None,
+                "message": e.detail
+            }
+        )
     except Exception as e:
-        raise HTTPException(500, str(e))
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )

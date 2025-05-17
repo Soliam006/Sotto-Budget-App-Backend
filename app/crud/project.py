@@ -2,13 +2,12 @@ from typing import Dict
 
 from fastapi import HTTPException
 from pydantic import ValidationError
-from requests import session
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from datetime import datetime, timezone
 
 from app.crud.expense import expense_to_out
-from app.models.expense import ExpenseStatus, ExpenseOut
+from app.models.expense import ExpenseStatus
 from app.models.project import Project, ProjectCreate, ProjectUpdate, ProjectOut, team_member_to_out
 from app.models.project_expense import ProjectExpenseLink
 from app.models.project_team import ProjectTeamLink
@@ -99,6 +98,10 @@ def add_worker_to_project(session: Session, project_id: int, worker_id: int, rol
             status_code=404,
             detail="Project not found"
         )
+    # Verifica que el trabajador exista
+    worker = session.get(Worker, worker_id)
+    if not worker:
+        raise HTTPException(status_code=404, detail="Worker not found")
 
     # Verifica si el trabajador ya está asignado al proyecto
     existing_link = session.exec(
@@ -110,22 +113,29 @@ def add_worker_to_project(session: Session, project_id: int, worker_id: int, rol
     if existing_link:
         raise HTTPException( status_code=400, detail="Worker already in project team")
 
-    # Verifica que el trabajador exista
-    worker = session.get(Worker, worker_id)
-    if not worker:
-        raise HTTPException(status_code=404, detail="Worker not found")
 
-    # Crea la relación entre el proyecto y el trabajador
-    new_link = ProjectTeamLink(
-        project_id=project_id,
-        worker_id=worker_id,
-        role=role
-    )
+    try:
+    # Si el trabajador no tiene especialidad, se asigna el rol proporcionado como su especialidad
+        if not worker.specialty:
+            worker.specialty = role
+            assigned_role = role
+        else:
+            assigned_role = worker.specialty
 
-    session.add(new_link)  # Agrega la relación a la sesión
-    session.commit()  # Guarda los cambios en la base de datos
-    session.refresh(new_link)  # Refresca el objeto para obtener los datos actualizados
+        # Crea la relación entre el proyecto y el trabajador
+        new_link = ProjectTeamLink(
+            project_id=project_id,
+            worker_id=worker_id,
+            role=assigned_role
+        )
 
+        session.add(new_link)  # Agrega la relación a la sesión
+        session.commit()  # Guarda los cambios en la base de datos
+        session.refresh(new_link)  # Refresca el objeto para obtener los datos actualizados
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Error adding worker to project: {str(e)}")
+    
     # Devuelve los datos del equipo actualizado
     return team_out(worker, new_link)
 

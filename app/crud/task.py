@@ -55,7 +55,7 @@ def create_task_for_project(
         )
     # Validar que el worker pertenezca al proyecto y esté en su team
     team = project.team
-    if not any(member.worker_id == task_data.worker_id for member in team):
+    if not any(member.id == task_data.worker_id for member in team):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Worker is not part of the project team"
