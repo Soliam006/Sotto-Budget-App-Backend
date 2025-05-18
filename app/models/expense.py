@@ -45,7 +45,7 @@ class ExpenseUpdate(SQLModel):
     description: Optional[str] = None
     amount: Optional[float] = Field(None, gt=0)
     status: Optional[ExpenseStatus] = None
-    approved_by: Optional[str] = "Username"
+    approved_by: Optional[str] = None
     notes: Optional[str] = Field(default=None, max_length=500)
 
     class Config:

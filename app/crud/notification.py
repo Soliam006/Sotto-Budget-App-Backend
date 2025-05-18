@@ -118,22 +118,16 @@ def notify_task_update(session: Session, task: Task, changes: dict):
         }
     )
 
-def notify_expense_update(session: Session, expense: Expense, update_data: dict, original_expense: Expense, original_link: ProjectExpenseLink = None,
-                          link: ProjectExpenseLink = None):
+
+def notify_expense_update(session: Session, expense: Expense, update_data: dict):
+
     """Notifica sobre cambios en un gasto"""
     ActivityService(session).log_activity(
         activity_type=ActivityType.EXPENSE_UPDATED,
         project_id=expense.project_id,
         expense_id=expense.id,
         metadatas={
-                "changes": {
-                    k: {
-                        "old": getattr(original_expense if hasattr(expense, k) else original_link, k),
-                        "new": v
-                    }
-                    for k, v in update_data.items()
-                    if hasattr(expense, k) or (link and hasattr(link, k))
-                },
+                "changes": update_data,
                 "new_status": expense.status
             }
     )

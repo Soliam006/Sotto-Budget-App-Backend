@@ -136,7 +136,22 @@ def update_project_expense(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not linked to this project")
 
     update_data = expense_data.model_dump(exclude_unset=True)
-    original_expense = expense.model_copy()
+    original_expense = Expense(
+        id=expense.id,
+        amount=expense.amount,
+        category=expense.category,
+        description=expense.description,
+        status=expense.status,
+        created_at=expense.created_at,
+        updated_at=expense.updated_at
+    )
+    original_link = ProjectExpenseLink(
+        project_id=link.project_id,
+        expense_id=link.expense_id,
+        approved_by=link.approved_by,
+        notes=link.notes,
+        updated_at=link.updated_at
+    )
 
     # Verificar que el gasto no esté aprobado
     info_updated = False
@@ -148,7 +163,7 @@ def update_project_expense(
             info_updated = True
 
     expense.updated_at = datetime.now(timezone.utc)
-    original_link = link.model_copy()
+
 
     if link and info_updated:
         link.updated_at = datetime.now(timezone.utc)
@@ -160,22 +175,24 @@ def update_project_expense(
     if link:
         session.refresh(link)
 
-    # Notificar cambios
-    if update_data:
-        notify_expense_update(
-            session=session,
-            expense=expense,
-            update_data={
-                k: {"old": getattr(expense, k), "new": v}
-                for k, v in update_data.items()
-                if getattr(expense, k) != v
-            },
-            original_expense=original_expense,
-            original_link=original_link,
-            link=link
-        )
+    # Verificar si ha habido cambios
+    changes = {}
+    for k, v in update_data.items():
+        if hasattr(expense, k): # Verificar si el atributo pertenece a Expense
+            old = getattr(original_expense, k, None)
+            if old != v:
+                changes[k] = {"old": old, "new": v}
+        elif hasattr(link, k): # Verificar si el atributo pertenece a ProjectExpenseLink
+            old = getattr(original_link, k, None)
+            if old != v:
+                changes[k] = {"old": old, "new": v}
+
+    # Si ha habido cambios, notificar
+    if changes:
+        notify_expense_update( session=session, expense=expense, update_data=changes)
 
     return expense_to_out(expense=expense, link=link)
+
 
 def delete_project_expense(
         session: Session,
