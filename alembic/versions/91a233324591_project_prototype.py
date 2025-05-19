@@ -1,8 +1,8 @@
-"""Nuevo Esquema
+"""Project Prototype
 
-Revision ID: a23ec49b60e2
+Revision ID: 91a233324591
 Revises: 
-Create Date: 2025-05-17 16:33:48.259440
+Create Date: 2025-05-18 20:42:47.645285
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a23ec49b60e2'
+revision: str = '91a233324591'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -149,8 +149,7 @@ def upgrade() -> None:
     sa.Column('task_id', sa.Integer(), nullable=True),
     sa.Column('expense_id', sa.Integer(), nullable=True),
     sa.Column('activity_type', sa.Enum('TASK_CREATED', 'TASK_COMPLETED', 'TASK_UPDATED', 'TASK_DELETED', 'EXPENSE_ADDED', 'EXPENSE_APPROVED', 'EXPENSE_UPDATED', 'EXPENSE_DELETED', name='activitytype'), nullable=False),
-    sa.Column('title', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('message', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('title_project', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('is_read', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('metadatas', sa.JSON(), nullable=True),

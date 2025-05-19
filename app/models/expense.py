@@ -36,7 +36,7 @@ class ExpenseCreate(SQLModel):
     notes: Optional[str] = Field(default=None, max_length=500)
 
     class Config:
-        allow_population_by_field_name = True
+        validate_by_name = True
 
 
 class ExpenseUpdate(SQLModel):
@@ -49,7 +49,7 @@ class ExpenseUpdate(SQLModel):
     notes: Optional[str] = Field(default=None, max_length=500)
 
     class Config:
-        allow_population_by_field_name = True
+        validate_by_name = True
 
 
 class ExpenseOut(BaseModel):
