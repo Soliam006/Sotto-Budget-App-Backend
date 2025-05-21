@@ -152,7 +152,7 @@ def update_existing_task(
         notify_task_update(
             session=session,
             task=task,
-            changes={
+            update_data={
                 k: {"old": getattr(original_task, k), "new": v}
                 for k, v in update_data.items()
                 if getattr(original_task, k) != v

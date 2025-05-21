@@ -1,6 +1,6 @@
 from pydantic import model_validator
 
-from .deps import datetime, Field, Relationship, SQLModel, timezone, Enum, Optional
+from .deps import Field, Relationship, SQLModel, Enum, Optional
 
 class InventoryCategory(str, Enum):
     SERVICES = "services"
@@ -49,4 +49,19 @@ class InventoryItemCreate(SQLModel):
     project_id: int
 
     class Config:
-        allow_population_by_field_name = True
+        validate_by_name = True
+
+
+class InventoryItemUpdate(SQLModel):
+    name: Optional[str] = Field(None, max_length=100)
+    category: Optional[InventoryCategory] = None
+    total: Optional[float] = Field(None, gt=0)
+    used: Optional[float] = Field(None, ge=0)
+    unit: Optional[str] = Field(None, max_length=20)
+    unit_cost: Optional[float] = Field(None, gt=0, alias="unitCost")
+    supplier: Optional[str] = Field(None, max_length=100)
+    status: Optional[InventoryStatus] = None
+    project_id: Optional[int] = None
+
+    class Config:
+        validate_by_name = True

@@ -10,6 +10,7 @@ from .project_team import ProjectTeamLink
 from .task import TaskOut
 from .user import Admin, Client, ClientSimpleOut, Worker
 from .project_client import ProjectClient
+from .inventory import InventoryItem
 
 
 class ProjectStatus(str, Enum):
@@ -108,6 +109,7 @@ class ProjectOut(BaseModel):
     clients: List[ClientSimpleOut] = []  # Lista de clientes asignados
     tasks: List[TaskOut] = []  # Añade esta línea
     team: List[TeamMemberOut] = []
+    inventory: List[InventoryItem] = []
 
     class Config:
         from_attributes = True

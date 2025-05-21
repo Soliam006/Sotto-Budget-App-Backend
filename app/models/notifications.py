@@ -14,6 +14,9 @@ class ActivityType(str, Enum):
     EXPENSE_APPROVED = "expense_approved"
     EXPENSE_UPDATED = "expense_updated"
     EXPENSE_DELETED = "expense_deleted"
+    INVENTORY_ADDED = "inventory_added"
+    INVENTORY_UPDATED = "inventory_updated"
+    INVENTORY_DELETED = "inventory_deleted"
     # Se pueden añadir más tipos según crezca la app
 
 

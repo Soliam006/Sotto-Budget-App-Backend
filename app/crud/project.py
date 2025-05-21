@@ -266,7 +266,7 @@ def get_project_details(session: Session, project_id: int) -> ProjectOut:
                 ))
 
     return ProjectOut(
-        id=project.id, title=project.title, description=project.description,
+        id=project.id, title=project.title, description=project.description, inventory=project.inventory_items,
         admin=admin_name, limitBudget=project.limit_budget, currentSpent=current_spent,
         progress=progress, location=project.location, startDate=project.start_date, endDate=project.end_date,
         status=project.status, expenses=expenses_out, expenseCategories=expense_categories,

@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 
 from app.models.expense import Expense
 from app.models.project_client import ProjectClient
-from app.models.project_expense import ProjectExpenseLink
+from app.models.inventory import InventoryItem
 from app.models.task import Task
 from app.models.user import  Client
 from app.models.notifications import ActivityService, ActivityType, Activity
@@ -48,6 +48,25 @@ def send_expense_notifications(
         }
     )
     
+    return activity
+
+
+def send_inventory_notifications(
+    session: Session,
+    project_id: int,
+    inventory_item: InventoryItem
+) -> Activity:
+    activity = ActivityService(session).log_activity(
+        activity_type=ActivityType.INVENTORY_ADDED,
+        project_id=project_id,
+        metadatas={
+            "item_name": inventory_item.name,
+            "quantity": inventory_item.total,
+            "unit": inventory_item.unit,
+            "unit_cost": inventory_item.unit_cost
+        }
+    )
+
     return activity
 
 
@@ -105,14 +124,14 @@ def notify_task_deletion(session: Session, project_id: int, task_data: dict):
         }
     )
 
-def notify_task_update(session: Session, task: Task, changes: dict):
+def notify_task_update(session: Session, task: Task, update_data: dict):
     """Notifica sobre cambios en una tarea"""
     ActivityService(session).log_activity(
         activity_type=ActivityType.TASK_UPDATED,
         project_id=task.project_id,
         task_id=task.id,
         metadatas={
-            "changes": changes,
+            "changes": update_data,
             "new_status": task.status,
             "new_due_date": task.due_date.isoformat() if task.due_date else None
         }
@@ -132,6 +151,16 @@ def notify_expense_update(session: Session, expense: Expense, update_data: dict)
             }
     )
 
+def notify_inventory_update(session: Session, inventory_item: InventoryItem, update_data: dict):
+    """Notifica sobre cambios en un item de inventario"""
+    ActivityService(session).log_activity(
+        activity_type=ActivityType.INVENTORY_UPDATED,
+        project_id=inventory_item.project_id,
+        metadatas={
+            "changes": update_data
+        }
+    )
+
 def notify_expense_deletion(session: Session, project_id: int, expense_data: dict):
     """Notifica sobre eliminación de gasto"""
     ActivityService(session).log_activity(
@@ -139,5 +168,16 @@ def notify_expense_deletion(session: Session, project_id: int, expense_data: dic
         project_id=project_id,
         metadatas={
             "deleted_expense": expense_data
+        }
+    )
+
+
+def notify_inventory_deletion(session: Session, inventory_data: dict, project_id: int):
+    """Notifica sobre eliminación de item de inventario"""
+    ActivityService(session).log_activity(
+        activity_type=ActivityType.INVENTORY_DELETED,
+        project_id=project_id,
+        metadatas={
+            "deleted_item": inventory_data
         }
     )

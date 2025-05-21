@@ -1,8 +1,8 @@
-"""Project Prototype
+"""Inventory
 
-Revision ID: 91a233324591
+Revision ID: ab8f92317ab9
 Revises: 
-Create Date: 2025-05-18 20:42:47.645285
+Create Date: 2025-05-22 00:16:21.302766
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = '91a233324591'
+revision: str = 'ab8f92317ab9'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -111,6 +111,21 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['project_id'], ['project.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('inventoryitem',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('category', sa.Enum('SERVICES', 'MATERIALS', 'PRODUCTS', 'LABOUR', name='inventorycategory'), nullable=False),
+    sa.Column('total', sa.Float(), nullable=False),
+    sa.Column('used', sa.Float(), nullable=False),
+    sa.Column('remaining', sa.Float(), nullable=False),
+    sa.Column('unit', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=False),
+    sa.Column('unit_cost', sa.Float(), nullable=False),
+    sa.Column('supplier', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('status', sa.Enum('INSTALLED', 'PENDING', 'IN_BUDGET', name='inventorystatus'), nullable=False),
+    sa.Column('project_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['project_id'], ['project.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('projectclient',
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('client_id', sa.Integer(), nullable=False),
@@ -148,7 +163,7 @@ def upgrade() -> None:
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('task_id', sa.Integer(), nullable=True),
     sa.Column('expense_id', sa.Integer(), nullable=True),
-    sa.Column('activity_type', sa.Enum('TASK_CREATED', 'TASK_COMPLETED', 'TASK_UPDATED', 'TASK_DELETED', 'EXPENSE_ADDED', 'EXPENSE_APPROVED', 'EXPENSE_UPDATED', 'EXPENSE_DELETED', name='activitytype'), nullable=False),
+    sa.Column('activity_type', sa.Enum('TASK_CREATED', 'TASK_COMPLETED', 'TASK_UPDATED', 'TASK_DELETED', 'EXPENSE_ADDED', 'EXPENSE_APPROVED', 'EXPENSE_UPDATED', 'EXPENSE_DELETED', 'INVENTORY_ADDED', 'INVENTORY_UPDATED', 'INVENTORY_DELETED', name='activitytype'), nullable=False),
     sa.Column('title_project', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('is_read', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
@@ -189,6 +204,7 @@ def downgrade() -> None:
     op.drop_table('task')
     op.drop_table('projectteamlink')
     op.drop_table('projectclient')
+    op.drop_table('inventoryitem')
     op.drop_table('expense')
     op.drop_table('project')
     op.drop_table('clientavailability')
