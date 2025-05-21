@@ -38,6 +38,9 @@ class Project(SQLModel, table=True):
     team: List[Worker] = Relationship( back_populates="projects", link_model=ProjectTeamLink)
     activities: List["Activity"] = Relationship(back_populates="project")
 
+    # Relación con inventario
+    inventory_items: List["InventoryItem"] = Relationship(back_populates="project")
+
 
 class ProjectCreate(SQLModel):
     title: str = Field(..., min_length=5, schema_extra= {"example":"App móvil"})
