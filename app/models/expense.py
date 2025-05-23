@@ -11,11 +11,18 @@ class ExpenseStatus(str, Enum):
     REJECTED = "Rejected"
 
 
+class ExpenseCategory(str, Enum):
+    OTHERS = "Others"
+    MATERIALS = "Materials"
+    PRODUCTS = "Products"
+    LABOUR = "Labour"
+    TRANSPORT = "Transport"
+
 class Expense(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="project.id")
     expense_date: datetime = Field(alias="date")
-    category: str  # Por ejemplo: "Materials", "Labor", "Equipment", "Other"
+    category: ExpenseCategory
     description: str
     amount: float
     status: ExpenseStatus
@@ -28,7 +35,7 @@ class Expense(SQLModel, table=True):
 
 class ExpenseCreate(SQLModel):
     expense_date: datetime = Field(alias="date")
-    category: str
+    category: ExpenseCategory
     description: str
     amount: float = Field(..., gt=0)
     status: ExpenseStatus = ExpenseStatus.PENDING
@@ -41,7 +48,7 @@ class ExpenseCreate(SQLModel):
 
 class ExpenseUpdate(SQLModel):
     expense_date: Optional[datetime] = Field(None, alias="date")
-    category: Optional[str] = None
+    category: Optional[ExpenseCategory] = None
     description: Optional[str] = None
     amount: Optional[float] = Field(None, gt=0)
     status: Optional[ExpenseStatus] = None
@@ -55,7 +62,7 @@ class ExpenseUpdate(SQLModel):
 class ExpenseOut(BaseModel):
     id: int
     expense_date: datetime
-    category: str
+    category: ExpenseCategory
     description: str
     amount: float
     status: ExpenseStatus

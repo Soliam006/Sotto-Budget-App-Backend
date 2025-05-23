@@ -3,10 +3,10 @@ from pydantic import model_validator
 from .deps import Field, Relationship, SQLModel, Enum, Optional
 
 class InventoryCategory(str, Enum):
-    SERVICES = "services"
-    MATERIALS = "materials"
-    PRODUCTS = "products"
-    LABOUR = "labour"
+    SERVICES = "Services"
+    MATERIALS = "Materials"
+    PRODUCTS = "Products"
+    LABOUR = "Labour"
 
 class InventoryStatus(str, Enum):
     INSTALLED = "Installed"

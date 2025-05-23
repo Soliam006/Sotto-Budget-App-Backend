@@ -1,8 +1,8 @@
-"""Inventory
+"""Nuevo Esquema
 
-Revision ID: ab8f92317ab9
+Revision ID: 7be11a183cd2
 Revises: 
-Create Date: 2025-05-22 00:16:21.302766
+Create Date: 2025-05-23 11:45:13.996688
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'ab8f92317ab9'
+revision: str = '7be11a183cd2'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -102,7 +102,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('expense_date', sa.DateTime(), nullable=False),
-    sa.Column('category', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('category', sa.Enum('OTHERS', 'MATERIALS', 'PRODUCTS', 'LABOUR', 'TRANSPORT', name='expensecategory'), nullable=False),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
     sa.Column('status', sa.Enum('APPROVED', 'PENDING', 'REJECTED', name='expensestatus'), nullable=False),
