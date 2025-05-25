@@ -1,12 +1,14 @@
 from typing import List
 from fastapi import HTTPException
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.models.expense import Expense
+from app.models.project import Project
 from app.models.project_client import ProjectClient
 from app.models.inventory import InventoryItem
 from app.models.task import Task
-from app.models.user import  Client
+from app.models.user import Client, Worker, Admin
 from app.models.notifications import ActivityService, ActivityType, Activity
 
 def send_task_notifications(
@@ -99,6 +101,11 @@ def get_client_activities(
     activities = session.exec(
         select(Activity)
         .where(Activity.project_id.in_(projects))
+        .options(
+            selectinload(Activity.project),
+            selectinload(Activity.task),
+            selectinload(Activity.expense)
+        )
     ).all()
 
     # Filtrar actividades por estado de lectura y tipo
@@ -181,3 +188,43 @@ def notify_inventory_deletion(session: Session, inventory_data: dict, project_id
             "deleted_item": inventory_data
         }
     )
+
+def get_user_activities(session: Session, user_id: int) -> List[Activity]:
+    """Retrieve activities associated with a user (Client or Admin)."""
+    # Determine if the user is a Client or Admin
+    user = session.exec(select(Client).where(Client.user_id == user_id)).first()
+    is_client = True if user else False
+
+    if not user:
+        user = session.exec(select(Admin).where(Admin.user_id == user_id)).first()
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+    # Retrieve projects associated with the user
+    if is_client:
+        project_ids = session.exec(
+            select(ProjectClient.project_id)
+            .where(ProjectClient.client_id == user.id)
+        ).all()
+    else:
+        project_ids = session.exec(
+            select(Project.id)
+            .where(Project.admin_id == user.id)
+        ).all()
+
+    if not project_ids:
+        raise HTTPException(
+            status_code=404,
+            detail="No projects found for this user"
+        )
+
+    # Retrieve activities for the associated projects
+    activities = session.exec(
+        select(Activity)
+        .where(Activity.project_id.in_([id_ for id_ in project_ids]))
+    ).all()
+
+    return activities

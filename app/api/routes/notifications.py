@@ -57,3 +57,44 @@ def get_client_activities(
                 "message": str(e)
             }
         )
+
+
+@router.get("/", response_model=Response, dependencies=[Depends(get_current_user)])
+def get_user_activities(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Get activities for the current user."""
+    try:
+        activities = notification_crud.get_user_activities(
+            session=session,
+            user_id=current_user.id
+        )
+
+        if not activities:
+            return Response(statusCode=404, data=None, message="No activities found for this user")
+
+        return Response(
+            statusCode=200,
+            data=activities,
+            message="Activities found"
+        )
+
+    except HTTPException as http_exc:
+        return JSONResponse(
+            status_code=http_exc.status_code,
+            content={
+                "statusCode": http_exc.status_code,
+                "data": None,
+                "message": http_exc.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
