@@ -23,7 +23,7 @@ VALUES (
            1,
            1200000,
            'Calle Educación 123, Madrid',
-           '2025-06-01 00:00:00',
+           '2025-05-01 00:00:00',
            '2026-06-01 00:00:00',
            'ACTIVE',
            NOW(),
@@ -46,11 +46,11 @@ VALUES
     (5, 'Construction Labor', 'LABOUR', 10000, 0, 10000, 'hours', 25, 'BuildRight Workers', 'IN_BUDGET', 1);
 
 -- 5. Insertar gastos reales (solo visibles para admin)
-INSERT INTO expense (id, project_id, expense_date, category, description, amount, status, created_at, updated_at)
+INSERT INTO expense (id, project_id, expense_date, category, description, amount, status, created_at, updated_at, title)
 VALUES
-    (1, 1, '2025-06-05 00:00:00', 'MATERIALS', 'Initial bamboo flooring purchase', 52500, 'APPROVED', NOW(), NOW()),
-    (2, 1, '2025-06-10 00:00:00', 'LABOUR', 'First week construction labor', 25000, 'APPROVED', NOW(), NOW()),
-    (3, 1, '2025-06-12 00:00:00', 'PRODUCTS', 'Deposit for solar panels', 50000, 'PENDING', NOW(), NOW());
+    (1, 1, '2025-06-05 00:00:00', 'MATERIALS', 'Initial bamboo flooring purchase', 52500, 'APPROVED', NOW(), NOW(), 'Bamboo Flooring Purchase'),
+    (2, 1, '2025-06-10 00:00:00', 'LABOUR', 'First week construction labor', 25000, 'APPROVED', NOW(), NOW(), 'Construction Labor Week 1'),
+    (3, 1, '2025-06-12 00:00:00', 'PRODUCTS', 'Deposit for solar panels', 50000, 'PENDING', NOW(), NOW(), 'Solar Panels Deposit');
 
 -- Asociar gastos al proyecto (con información adicional)
 INSERT INTO projectexpenselink (project_id, expense_id, approved_by, notes, updated_at)

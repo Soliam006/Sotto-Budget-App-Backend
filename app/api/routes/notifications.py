@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import (APIRouter, Depends, HTTPException)
 from fastapi.responses import JSONResponse
 from app.api.deps import get_current_user, get_current_active_superuser
-from app.models.notifications import ActivityOut, ActivityType
+from app.models.notifications import ActivityOut, ActivityType, ActivityOutList
 from app.models.project import ProjectCreate, ProjectUpdate
 from app.models.response import Response
 from app.models.user import User
@@ -35,7 +35,18 @@ def get_client_activities(
         
         return Response(
             statusCode=200,
-            data=activities,
+            data= ActivityOutList(
+                activities=[ActivityOut(
+                    id=activity.id,
+                    activity_type=activity.activity_type,
+                    title_project=activity.title_project,
+                    is_read=activity.is_read,
+                    created_at=activity.created_at,
+                    project=activity.project,
+                    task=activity.task,
+                    expense=activity.expense,
+                    metadatas=activity.metadatas
+                ) for activity in activities]),
             message="Activities found"
         )
 
@@ -76,7 +87,18 @@ def get_user_activities(
 
         return Response(
             statusCode=200,
-            data=activities,
+            data= ActivityOutList(
+                activities=[ActivityOut(
+                    id=activity.id,
+                    activity_type=activity.activity_type,
+                    title_project=activity.title_project,
+                    is_read=activity.is_read,
+                    created_at=activity.created_at,
+                    project=activity.project,
+                    task=activity.task,
+                    expense=activity.expense,
+                    metadatas=activity.metadatas
+                ) for activity in activities]),
             message="Activities found"
         )
 

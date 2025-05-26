@@ -20,6 +20,7 @@ class ExpenseCategory(str, Enum):
 
 class Expense(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(..., max_length=40, description="Title of the expense")
     project_id: int = Field(foreign_key="project.id")
     expense_date: datetime = Field(alias="date")
     category: ExpenseCategory
@@ -35,6 +36,7 @@ class Expense(SQLModel, table=True):
 
 class ExpenseCreate(SQLModel):
     expense_date: datetime = Field(alias="date")
+    title: str = Field(..., max_length=40, description="Title of the expense")
     category: ExpenseCategory
     description: str
     amount: float = Field(..., gt=0)
@@ -48,6 +50,7 @@ class ExpenseCreate(SQLModel):
 
 class ExpenseUpdate(SQLModel):
     expense_date: Optional[datetime] = Field(None, alias="date")
+    title: Optional[str] = Field(None, max_length=40, description="Title of the expense")
     category: Optional[ExpenseCategory] = None
     description: Optional[str] = None
     amount: Optional[float] = Field(None, gt=0)
@@ -61,6 +64,7 @@ class ExpenseUpdate(SQLModel):
 
 class ExpenseOut(BaseModel):
     id: int
+    title: str
     expense_date: datetime
     category: ExpenseCategory
     description: str

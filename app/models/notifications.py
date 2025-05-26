@@ -33,10 +33,19 @@ class Activity(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadatas: Optional[Dict[str, Any]] = Field(default={}, sa_type=JSON)  # Datos adicionales
 
-    # Relaciones
-    project: Optional["Project"] = Relationship(back_populates="activities")
-    task: Optional["Task"] = Relationship(back_populates="activities")
-    expense: Optional["Expense"] = Relationship(back_populates="activities")
+    # Relaciones mejor definidas
+    project: Optional["Project"] = Relationship(
+        back_populates="activities",
+        sa_relationship_kwargs={"lazy": "joined"}
+    )
+    task: Optional["Task"] = Relationship(
+        back_populates="activities",
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    expense: Optional["Expense"] = Relationship(
+        back_populates="activities",
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
     
 
 class BasicInfo(SQLModel):
@@ -49,7 +58,7 @@ class ActivityOut(SQLModel):
     title_project: str
     is_read: bool
     created_at: datetime
-    project: BasicInfo
+    project: BasicInfo = Field(default=None)
     task: Optional[BasicInfo] = None
     expense: Optional[BasicInfo] = None
     metadatas: Dict[str, Any] = Field(default={})
@@ -86,3 +95,12 @@ class ActivityService:
         self.session.add(activity)
         self.session.commit()
         return activity
+
+
+class ActivityOutList(SQLModel):
+    activities: List[ActivityOut] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
+        orm_mode = True
+        use_enum_values = True

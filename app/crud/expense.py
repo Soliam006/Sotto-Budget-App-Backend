@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from starlette import status
 
 from app.crud.notification import notify_expense_deletion, notify_expense_update, send_expense_notifications
-from app.models.expense import ExpenseStatus, ExpenseCreate, Expense, ExpenseUpdate, ExpenseOut
+from app.models.expense import ExpenseCreate, Expense, ExpenseUpdate, ExpenseOut
 from app.models.project import Project
 from app.models.project_expense import ProjectExpenseLink
 
@@ -43,7 +43,7 @@ def create_project_expense(
         session.commit() # Guardar los cambios en la base de datos
         session.refresh(expense) # Refrescar el objeto para obtener los datos actualizados
         session.refresh(link) # Refrescar el objeto
-        print(f"----------------!!!!!!!!!!!!!!!!!!!_------------------------Link: {link}")
+
         if link:
             send_expense_notifications(
                 session=session,
@@ -63,6 +63,7 @@ def expense_to_out(expense: Expense, link: ProjectExpenseLink) -> ExpenseOut:
     """
     expense_dict = {
         "id": expense.id,
+        "title": expense.title,
         "expense_date": expense.expense_date,
         "amount": expense.amount,
         "category": expense.category,
@@ -138,6 +139,7 @@ def update_project_expense(
     update_data = expense_data.model_dump(exclude_unset=True)
     original_expense = Expense(
         id=expense.id,
+        title=expense.title,
         amount=expense.amount,
         category=expense.category,
         description=expense.description,
@@ -210,6 +212,7 @@ def delete_project_expense(
     # Guardar datos antes de borrar
     expense_data = {
         "id": expense.id,
+        "title": expense.title,
         "amount": expense.amount,
         "category": expense.category
     }
