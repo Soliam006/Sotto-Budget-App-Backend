@@ -102,5 +102,4 @@ class ActivityOutList(SQLModel):
 
     class Config:
         from_attributes = True
-        orm_mode = True
         use_enum_values = True
