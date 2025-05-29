@@ -80,13 +80,17 @@ class UserUpdate(SQLModel):
     location: Optional[str] = None
     description: Optional[str] = None
 
+class FollowStatus(str, Enum):
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
 
 class Follow(SQLModel, table=True):
     follower_id: int = Field(foreign_key="user.id", primary_key=True)
     following_id: int = Field(foreign_key="user.id", primary_key=True)
-    status: str  # "PENDING", "ACCEPTED", "REJECTED"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    status: FollowStatus = Field(default=FollowStatus.PENDING, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     follower: Optional[User] = Relationship(
         sa_relationship_kwargs={"primaryjoin": "User.id==Follow.follower_id"}
@@ -97,8 +101,8 @@ class Follow(SQLModel, table=True):
 
 
 class FollowUpdate(SQLModel):
-    status: str  # "PENDING", "ACCEPTED", "REJECTED"
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    status: FollowStatus = Field(default=FollowStatus.PENDING)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class FollowOut(SQLModel):

@@ -1,8 +1,8 @@
-"""Final Squema
+"""Final Schema
 
-Revision ID: 87bf0554b3d3
+Revision ID: 8e3bd8770832
 Revises: 
-Create Date: 2025-05-25 22:09:25.878262
+Create Date: 2025-05-29 18:30:05.592653
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = '87bf0554b3d3'
+revision: str = '8e3bd8770832'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -58,13 +58,14 @@ def upgrade() -> None:
     op.create_table('follow',
     sa.Column('follower_id', sa.Integer(), nullable=False),
     sa.Column('following_id', sa.Integer(), nullable=False),
-    sa.Column('status', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'ACCEPTED', 'REJECTED', name='followstatus'), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['follower_id'], ['user.id'], ),
     sa.ForeignKeyConstraint(['following_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('follower_id', 'following_id')
     )
+    op.create_index(op.f('ix_follow_status'), 'follow', ['status'], unique=False)
     op.create_table('worker',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -210,6 +211,7 @@ def downgrade() -> None:
     op.drop_table('project')
     op.drop_table('clientavailability')
     op.drop_table('worker')
+    op.drop_index(op.f('ix_follow_status'), table_name='follow')
     op.drop_table('follow')
     op.drop_table('client')
     op.drop_table('admin')

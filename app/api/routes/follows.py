@@ -1,6 +1,6 @@
 from fastapi import (APIRouter, HTTPException, Depends, Form)
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_worker_client_permission
 from app.models.response import Response
 from app.models.user import User, FollowOut
 import app.crud.follow as follow_crud
@@ -41,6 +41,23 @@ def get_follow_lists(
                         "following": following_list,
                         "requests": requests_list,
                     }, message="Follows found")
+
+
+@router.get("/follows_status", response_model=Response)
+def get_follow_status(
+        session: Session = Depends(get_session),
+        current_user: User = Depends(get_worker_client_permission)
+):
+    try:
+        follow_status = follow_crud.get_follows_bd_relationship(session=session, user_id=current_user.id)
+
+    except HTTPException as e:
+        return Response(statusCode=e.status_code, data=None, message=e.detail)
+    except Exception as e:
+        return Response(statusCode=400, data=None, message=str(e))
+
+    return Response(statusCode=200, data=follow_status, message="Follow status found")
+
 
 
 @router.post("/{user_id}", response_model=Response)

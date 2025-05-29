@@ -1,10 +1,6 @@
 """ Follow CRUD operations. """
-
-
 from sqlmodel import Session, select
-
-from app.models.user import Follow
-from fastapi import HTTPException
+from app.models.user import Follow, User
 
 
 def get_followers(*, session: Session, user_id: int):
@@ -17,6 +13,38 @@ def get_following(*, session: Session, user_id: int):
 
 def get_follow_requests(*, session: Session, user_id: int):
     return session.exec(select(Follow).where(Follow.following_id == user_id, Follow.status == "PENDING")).all()
+
+def get_follows_bd_relationship(*, session: Session, user_id: int):
+    """
+    Devuelve una lista de admins con su relación de follow respecto al user_id dado.
+    Si existe un Follow, el status será el del Follow, si no existe, será "NONE".
+    """
+    # Obtener todos los usuarios con rol 'admin'
+    admins = session.exec(select(User).where(User.role == "admin")).all()
+
+    # Obtener todos los follows donde el user_id sigue a un admin
+    follows = session.exec(
+        select(Follow).where(
+            (Follow.follower_id == user_id) & (Follow.following_id.in_([a.id for a in admins]))
+        )
+    ).all()
+
+    # Crear un diccionario para buscar rápidamente la relación
+    follow_map = {f.following_id: f.status for f in follows}
+
+    # Construir la lista de admins con status
+    result = []
+    for admin in admins:
+        status = follow_map.get(admin.id, "NONE")
+        result.append({
+            "id": admin.id,
+            "name": admin.name,
+            "username": admin.username,
+            "role": admin.role,
+            "status": status,
+            "avatar": "/favicon.ico"
+        })
+    return result
 
 
 def follow_user(*, session: Session, follower_id: int, following_id: int):
