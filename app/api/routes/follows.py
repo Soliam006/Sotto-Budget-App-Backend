@@ -79,15 +79,14 @@ def follow_user(user_id: int, session: Session = Depends(get_session), current_u
 def accept_follow_request(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
 
     try:
-        followers = follow_crud.accept_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
-        if followers is None:
+        follower = follow_crud.accept_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
+        if follower is None:
             return Response(statusCode=404, data=None, message="Follow request not found")
 
-        follows_out =  [FollowOut.from_follow(f, current_user_id=current_user.id) for f in followers]
     except Exception as e:
         return Response(statusCode=400, data=None, message=str(e))
 
-    return Response(statusCode=200, data=follows_out, message="Follow request accepted")
+    return Response(statusCode=200, data=follower, message="Follow request accepted")
 
 
 @router.post("/reject_follow/{user_id}", response_model=Response)

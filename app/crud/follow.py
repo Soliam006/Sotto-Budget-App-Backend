@@ -73,10 +73,13 @@ def follow_user(*, session: Session, follower_id: int, following_id: int):
 
 
 def accept_follow_request(*, session: Session, follower_id: int, following_id: int):
-    follow = session.exec(select(Follow).where(Follow.follower_id == follower_id,
-                                               Follow.following_id == following_id,
-                                               Follow.status == "PENDING"
-                                               )).first()
+    follow = session.exec(
+        select(Follow).where(
+            Follow.follower_id == follower_id,
+            Follow.following_id == following_id,
+            Follow.status == "PENDING"
+        )
+    ).first()
 
     if not follow:
         return None
@@ -85,7 +88,24 @@ def accept_follow_request(*, session: Session, follower_id: int, following_id: i
     session.add(follow)
     session.commit()
     session.refresh(follow)
-    return get_followers(session=session, user_id=follower_id)
+
+    user = session.exec(select(User).where(User.id == follower_id)).first()
+    is_following = session.exec(
+        select(Follow).where(
+            Follow.follower_id == following_id,
+            Follow.following_id == follower_id,
+            Follow.status == "ACCEPTED"
+        )
+    ).first() is not None
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "username": user.username,
+        "role": user.role,
+        "avatar": "/favicon.ico",
+        "isFollowing": is_following
+    }
 
 
 def reject_follow_request(*, session: Session, follower_id: int, following_id: int) -> Follow:
