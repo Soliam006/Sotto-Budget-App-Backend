@@ -1,4 +1,5 @@
 """ Follow CRUD operations. """
+from fastapi import HTTPException
 from sqlmodel import Session, select
 from app.models.user import Follow, User
 
@@ -57,6 +58,11 @@ def follow_user(*, session: Session, follower_id: int, following_id: int):
         # Devolver directamente el Array de Followes
         return get_followers(session=session, user_id=follower_id)
 
+    # Verificar que el usuario es cliente y el que sigue es admin
+    following_user = session.get(User, following_id)
+    if not following_user or following_user.role != "admin":
+        raise HTTPException( status_code=400, detail="You can only follow admins." )
+
     # Create a new follow relationship
     new_follow = Follow(follower_id=follower_id, following_id=following_id, status="PENDING")
     # Add the new follow relationship to the session
@@ -108,19 +114,20 @@ def accept_follow_request(*, session: Session, follower_id: int, following_id: i
     }
 
 
-def reject_follow_request(*, session: Session, follower_id: int, following_id: int) -> Follow:
-    # Status = PENDING
-    follow = session.exec(select(Follow).where(Follow.follower_id == follower_id,
-                                               Follow.following_id == following_id,
-                                               Follow.status == "PENDING")).first()
+def reject_follow_request(*, session: Session, follower_id: int, following_id: int) -> None:
+    follow = session.exec(
+        select(Follow).where(
+            Follow.follower_id == follower_id,
+            Follow.following_id == following_id,
+            Follow.status == "PENDING"
+        )
+    ).first()
     if not follow:
-        return None
+        raise HTTPException (status_code=404, detail="Follow request not found")
 
-    follow.status = "REJECTED"
-    session.add(follow)
+    session.delete(follow)
     session.commit()
-    session.refresh(follow)
-    return follow
+    return None
 
 
 def unfollow_user(*, session: Session, follower_id: int, following_id: int) -> Follow:

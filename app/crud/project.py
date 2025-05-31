@@ -55,6 +55,16 @@ def create_project(*, session: Session, project_data: ProjectCreate, admin_id: i
         session.add(new_project)  # Agrega el proyecto a la sesión
         session.commit()  # Guarda los cambios en la base de datos
         session.refresh(new_project)  # Refresca el objeto para obtener los datos actualizados
+
+        # 3. Asociar clients al proyecto (usando ProjectClient)
+        if project_data.clients_ids:
+            for user_id in project_data.clients_ids:
+                client = session.exec( select(Client).where(Client.user_id == user_id) ).first()
+                session.add(ProjectClient(project_id=new_project.id, client_id=client.id))
+            session.commit()
+
+        session.refresh(new_project)  # Refresca el objeto para obtener los datos actualizados
+
         return new_project
     except ValidationError as e:
         session.rollback()  # Revierte los cambios en caso de error
@@ -267,8 +277,8 @@ def get_project_details(session: Session, project_id: int) -> ProjectOut:
 
     return ProjectOut(
         id=project.id, title=project.title, description=project.description, inventory=project.inventory_items,
-        admin=admin_name, limitBudget=project.limit_budget, currentSpent=current_spent,
-        progress=progress, location=project.location, startDate=project.start_date, endDate=project.end_date,
+        admin=admin_name, limit_budget=project.limit_budget, currentSpent=current_spent,
+        progress=progress, location=project.location, start_date=project.start_date, end_date=project.end_date,
         status=project.status, expenses=expenses_out, expenseCategories=expense_categories,
         clients=clients_out, tasks=[task_to_out(t) for t in project.tasks], team=[team_member_to_out(w) for w in project.team]
     )

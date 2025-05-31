@@ -52,6 +52,7 @@ class ProjectCreate(SQLModel):
     end_date: datetime = Field(..., schema_extra= {"example":"2023-12-31T23:59:59Z"})
     # admin_id NO va aquí (se obtiene del usuario autenticado)
     status: ProjectStatus = Field(default=ProjectStatus.ACTIVE)
+    clients_ids: Optional[List[int]] = Field(default=None, description="Lista de IDs de Users asignados al proyecto")
 
     # Validación personalizada para fechas
     @model_validator(mode="after")
@@ -97,12 +98,12 @@ class ProjectOut(BaseModel):
     title: str
     description: str
     admin: str
-    limitBudget: float
+    limit_budget: float
     currentSpent: float
     progress: Dict[str, int]
     location: str
-    startDate: datetime
-    endDate: datetime
+    start_date: datetime
+    end_date: datetime
     status: ProjectStatus
     expenses: List[ExpenseOut]
     expenseCategories: Dict[str, float]

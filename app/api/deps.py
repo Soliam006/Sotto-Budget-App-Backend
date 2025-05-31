@@ -35,7 +35,17 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
 def get_worker_client_permission(
         current_user: UserOut = Depends(get_current_user)
 ):
+    print(f"--------------------------------------|||||| Current user role: {current_user.role}")
     if current_user.role == UserRole.WORKER or current_user.role == UserRole.CLIENT:
+        return current_user
+    else:
+        raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")
+
+
+def get_client_permission(
+        current_user: UserOut = Depends(get_current_user)
+):
+    if current_user.role == UserRole.CLIENT:
         return current_user
     else:
         raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")

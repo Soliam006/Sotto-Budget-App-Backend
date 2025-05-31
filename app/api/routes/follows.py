@@ -1,6 +1,6 @@
 from fastapi import (APIRouter, HTTPException, Depends, Form)
 
-from app.api.deps import get_current_user, get_worker_client_permission
+from app.api.deps import get_current_user, get_worker_client_permission, get_client_permission
 from app.models.response import Response
 from app.models.user import User, FollowOut
 import app.crud.follow as follow_crud
@@ -61,7 +61,7 @@ def get_follow_status(
 
 
 @router.post("/{user_id}", response_model=Response)
-def follow_user(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+def follow_user(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_client_permission)):
     if user_id == current_user.id:
         return Response(statusCode=400, data=None, message="You can't follow yourself")
 
@@ -78,6 +78,8 @@ def follow_user(user_id: int, session: Session = Depends(get_session), current_u
 @router.post("/accept_follow/{user_id}", response_model=Response)
 def accept_follow_request(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
 
+    print(f"Accepting follow request from user {user_id} for current user {current_user.name}")
+
     try:
         follower = follow_crud.accept_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
         if follower is None:
@@ -92,11 +94,9 @@ def accept_follow_request(user_id: int, session: Session = Depends(get_session),
 @router.post("/reject_follow/{user_id}", response_model=Response)
 def reject_follow_request(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     try:
-        result = follow_crud.reject_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
-        if result is None:
-            return Response(statusCode=404, data=None, message="Follow request not found")
+        follow_crud.reject_follow_request(session=session, follower_id=user_id, following_id=current_user.id)
 
-        follow_out = FollowOut.from_follow(result, current_user_id=current_user.id)
+        return Response(statusCode=200, data=None, message="Follow request rejected")
 
     except HTTPException as e:
         return Response(statusCode=e.status_code, data=None, message=e.detail)

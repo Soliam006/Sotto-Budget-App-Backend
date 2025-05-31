@@ -80,6 +80,20 @@ async def create_project(
         current_user: User = Depends(get_current_active_superuser)
 ):
     try:
+        # Verifica que los clientes existan
+        if project.clients_ids:
+            invalid_clients = []
+            for client_id in project.clients_ids:
+                print(f"-----------------------------------||||Validating client ID: {client_id}")
+                client = session.get(User, client_id)
+                if not client or client.role != "client":  # Asegura que sean clients
+                    invalid_clients.append(client_id)
+            if invalid_clients:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Los siguientes IDs no son clientes válidos: {invalid_clients}"
+                )
+
         new_project = crud.create_project(
             session=session,
             project_data=project,
