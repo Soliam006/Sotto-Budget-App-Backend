@@ -148,6 +148,9 @@ class UserOut(UserBase):
     followers: List[FollowOut] = []
     following: List[FollowOut] = []
     requests: List[FollowOut] = []
+    client: Optional["ClientOut"] = None
+    worker: Optional["WorkerRead"] = None
+    admin: Optional["AdminOut"] = None
 
 
 class UsersOut(SQLModel):
@@ -274,13 +277,14 @@ class ClientSimpleOut(BaseModel):
         from_attributes = True
 
 
-class ClientOut(UserOut):
+class ClientOut(BaseModel):
     client_id: int
     budget_limit: Optional[float]
 
 
-class AdminOut(UserOut):
+class AdminOut(BaseModel):
     admin_id: int
+    workers: List[WorkerRead] = []
 
 
 class WorkerOut(UserOut):

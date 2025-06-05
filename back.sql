@@ -32,6 +32,11 @@ VALUES (
 
 -- 3. Asociar clientes y equipo al proyecto
 INSERT INTO projectclient (project_id, client_id, created_at) VALUES (1, 1, NOW());
+-- Worker debe seguir al admin del proyecto
+INSERT INTO follow (follower_id, following_id, status, created_at, updated_at) VALUES
+    (2, 1, 'ACCEPTED', NOW(), NOW()),
+    (3, 1, 'ACCEPTED', NOW(), NOW());
+-- Asociar trabajadores al proyecto con roles específicos
 INSERT INTO projectteamlink (project_id, worker_id, role) VALUES
                                                               (1, 1, 'Construction Manager'),
                                                               (1, 2, 'Lead Architect');

@@ -228,8 +228,8 @@ def delete_project(session, project_id):
 def get_projects(session, admin_id: int):
     projects = session.exec(
         select(Project.id).where(Project.admin_id == admin_id)
-        .options(selectinload(Project.team))
     ).all()
+
     if not projects:
         raise HTTPException(status_code=404, detail="No projects found for this admin")
 

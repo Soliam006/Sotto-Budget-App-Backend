@@ -1,12 +1,15 @@
 """ User related CRUD methods """
 from fastapi import HTTPException, status
 from typing import Any
+
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from sqlalchemy import or_
 
 from app.core.security import get_password_hash
+from app.crud.follow import get_workers_follows
 from app.models.user import User, UserUpdate, UserOut, UserRegister, UserRole, Admin, Client, Worker, \
-    ClientAvailability, ClientOut, AdminOut, WorkerOut
+    ClientAvailability, ClientOut, AdminOut, WorkerOut, WorkerRead
 
 crud_id = "---------------------[User CRUD]"
 
@@ -63,15 +66,13 @@ def create_user(*, session: Session, user_data: UserRegister) -> UserOut:
 
 def get_user_client(*, session: Session, user_id: int) -> ClientOut | None:
     user = session.get(User, user_id)
+    print(f"{crud_id} Getting user client for user ID: {user_id}")
     try:
         if user:
             client = session.exec(select(Client).where(Client.user_id == user.id, Client.is_deleted == False)).first()
             if client:
-                return ClientOut.model_validate(user, update=
-                {
-                    "budget_limit": client.budget_limit,
-                    "client_id": client.id
-                })
+                return ClientOut(budget_limit= client.budget_limit,
+                                 client_id=client.id)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Error al obtener el cliente")
     return None
@@ -81,15 +82,24 @@ def get_user_admin(*, session: Session, user_id: int) -> AdminOut | None:
     user = session.get(User, user_id)
     if user:
         admin = session.exec(select(Admin).where(Admin.user_id == user.id)).first()
-        return AdminOut.model_validate(user, update={"admin_id": admin.id})
+
+        return AdminOut(admin_id= admin.id, workers=get_workers_follows(session=session, user_id=user.id))
     return None
 
 
-def get_user_worker(*, session: Session, user_id: int) -> WorkerOut | None:
+def get_user_worker(*, session: Session, user_id: int) -> WorkerRead | None:
     user = session.get(User, user_id)
+    print(f"{crud_id} Getting user worker for user ID: {user_id}")
     if user:
-        worker = session.exec(select(Worker).where(Worker.user_id == user.id)).first()
-        return WorkerOut.model_validate(user, update={"worker_id": worker.id})
+        worker = session.exec(
+            select(Worker)
+            .where(Worker.user_id == user.id)
+            .options(
+                selectinload(Worker.user),
+                     selectinload (Worker.projects),
+                     selectinload(Worker.tasks)
+          )).first()
+        return WorkerRead.from_worker( worker)
     return None
 
 

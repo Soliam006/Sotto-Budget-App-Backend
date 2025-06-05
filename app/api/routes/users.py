@@ -20,8 +20,35 @@ router = APIRouter()
 @router.get("/me", response_model=Response)
 async def read_users_me(current_user: UserOut = Depends(get_current_user),
                         session: Session = Depends(get_session)):
+    try:
 
-    current_user = enrich_user_with_follow_data(session=session, user=current_user)
+        current_user = enrich_user_with_follow_data(session=session, user=current_user)
+
+        if current_user.role == UserRole.CLIENT:
+            current_user.client = crud.get_user_client(session=session, user_id=current_user.id)
+        elif current_user.role == UserRole.WORKER:
+            current_user.worker = crud.get_user_worker(session=session, user_id=current_user.id)
+        elif current_user.role == UserRole.ADMIN:
+            current_user.admin = crud.get_user_admin(session=session, user_id=current_user.id)
+
+    except HTTPException as e:
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "statusCode": e.status_code,
+                "data": None,
+                "message": e.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
 
     return Response(statusCode=200, data=current_user, message="User found")
 

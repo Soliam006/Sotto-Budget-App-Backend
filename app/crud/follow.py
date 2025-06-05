@@ -1,7 +1,8 @@
 """ Follow CRUD operations. """
 from fastapi import HTTPException
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
-from app.models.user import Follow, User
+from app.models.user import Follow, User, Worker, WorkerRead
 
 
 def get_followers(*, session: Session, user_id: int):
@@ -138,3 +139,40 @@ def unfollow_user(*, session: Session, follower_id: int, following_id: int) -> F
     session.delete(follow)
     session.commit()
     return follow
+
+
+def get_workers_follows(session: Session, user_id: int):
+    """
+    Devuelve una lista de Workers que siguen al Admin especificado por user_id.
+    """
+    # Obtener los follows aceptados donde el usuario es seguido
+    follows = session.exec(
+        select(Follow.follower_id)
+        .join(User, Follow.follower_id == User.id)
+        .where(
+            Follow.following_id == user_id,
+            Follow.status == "ACCEPTED",
+            User.role == "worker"
+        )
+    ).all()
+
+    worker_ids = [fid[0] if isinstance(fid, tuple) else fid for fid in follows]
+
+    if not worker_ids:
+        raise HTTPException(
+            status_code=404,
+            detail="No workers found following this user"
+        )
+
+    # Obtener los Workers que siguen al Admin
+    workers = session.exec(
+        select(Worker)
+        .where(Worker.user_id.in_(worker_ids))
+        .options(
+            selectinload(Worker.user),
+            selectinload(Worker.projects),
+            selectinload(Worker.tasks)
+        )
+    ).all()
+
+    return [WorkerRead.from_worker(worker) for worker in workers]

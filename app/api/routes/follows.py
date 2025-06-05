@@ -1,6 +1,8 @@
 from fastapi import (APIRouter, HTTPException, Depends, Form)
+from starlette.responses import JSONResponse
 
-from app.api.deps import get_current_user, get_worker_client_permission, get_client_permission
+from app.api.deps import get_current_user, get_worker_client_permission, get_client_permission, \
+    get_current_active_superuser
 from app.models.response import Response
 from app.models.user import User, FollowOut
 import app.crud.follow as follow_crud
@@ -42,6 +44,29 @@ def get_follow_lists(
                         "requests": requests_list,
                     }, message="Follows found")
 
+
+@router.get("/workers", response_model=Response)
+def get_workers(
+        session: Session = Depends(get_session),
+        current_user: User = Depends(get_current_active_superuser)
+):
+    try:
+        workers = follow_crud.get_workers_follows(session=session, user_id=current_user.id)
+
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={
+            "statusCode": e.status_code,
+            "data": None,
+            "message": e.detail
+        })
+    except Exception as e:
+        return  JSONResponse(status_code=400, content={
+            "statusCode": 400,
+            "data": None,
+            "message": str(e)
+        })
+
+    return Response(statusCode=200, data=workers, message="Workers found")
 
 @router.get("/follows_status", response_model=Response)
 def get_follow_status(
