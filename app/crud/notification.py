@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from fastapi import HTTPException
 from sqlalchemy.orm import selectinload
@@ -8,12 +9,13 @@ from app.models.project import Project
 from app.models.project_client import ProjectClient
 from app.models.inventory import InventoryItem
 from app.models.task import Task
-from app.models.user import Client, Worker, Admin
-from app.models.notifications import ActivityService, ActivityType, Activity
+from app.models.user import Client, Admin
+from app.models.activity import ActivityService, ActivityType, Activity
 
 def send_task_notifications(
     session: Session,
     task: Task,
+    worker_name: str,
     project_id: int
 ) -> List[Activity]:
     
@@ -23,7 +25,9 @@ def send_task_notifications(
         project_id=project_id,
         task_id=task.id,
         metadatas={
-            "task_title": task.title,
+            "title": task.title,
+            "worker": worker_name,
+            "description": task.description,
             "due_date": task.due_date.isoformat() if task.due_date else None,
             "assignee": task.worker.user.username if task.worker else None
         }
@@ -37,15 +41,18 @@ def send_expense_notifications(
     expense: Expense,
     project_id: int
 ) -> List[Activity]:
-    
-    
+
     activity = ActivityService(session).log_activity(
         activity_type=ActivityType.EXPENSE_ADDED,
         project_id=project_id,
         expense_id=expense.id,
         metadatas={
-            "amount": expense.amount,
+            "id": expense.id,
+            "title": expense.title,
+            "date": expense.expense_date.isoformat(),
             "category": expense.category,
+            "description": expense.description,
+            "amount": expense.amount,
             "status": expense.status
         }
     )
@@ -61,11 +68,14 @@ def send_inventory_notifications(
     activity = ActivityService(session).log_activity(
         activity_type=ActivityType.INVENTORY_ADDED,
         project_id=project_id,
+        inventory_item_id=inventory_item.id,
         metadatas={
-            "item_name": inventory_item.name,
+            "title": inventory_item.name,
             "quantity": inventory_item.total,
             "unit": inventory_item.unit,
-            "unit_cost": inventory_item.unit_cost
+            "unit_cost": inventory_item.unit_cost,
+            "supplier": inventory_item.supplier,
+            "status": inventory_item.status,
         }
     )
 
@@ -104,8 +114,10 @@ def get_client_activities(
         .options(
             selectinload(Activity.project),
             selectinload(Activity.task),
-            selectinload(Activity.expense)
+            selectinload(Activity.expense),
+            selectinload(Activity.inventory_item)
         )
+        .order_by(Activity.created_at.desc())
     ).all()
 
     # Filtrar actividades por estado de lectura y tipo
@@ -131,16 +143,26 @@ def notify_task_deletion(session: Session, project_id: int, task_data: dict):
         }
     )
 
+
+def serialize_update_data(update_data: dict) -> dict:
+    """Convierte valores datetime en update_data a cadenas."""
+    for key, value in update_data.items():
+        if isinstance(value, dict):
+            for sub_key, sub_value in value.items():
+                if isinstance(sub_value, datetime):
+                    update_data[key][sub_key] = sub_value.isoformat()
+    return update_data
+
 def notify_task_update(session: Session, task: Task, update_data: dict):
     """Notifica sobre cambios en una tarea"""
+    serialized_data = serialize_update_data(update_data)
     ActivityService(session).log_activity(
         activity_type=ActivityType.TASK_UPDATED,
         project_id=task.project_id,
         task_id=task.id,
         metadatas={
-            "changes": update_data,
-            "new_status": task.status,
-            "new_due_date": task.due_date.isoformat() if task.due_date else None
+            "title": task.title,
+            "changes": serialized_data
         }
     )
 
@@ -153,8 +175,8 @@ def notify_expense_update(session: Session, expense: Expense, update_data: dict)
         project_id=expense.project_id,
         expense_id=expense.id,
         metadatas={
-                "changes": update_data,
-                "new_status": expense.status
+                "title": expense.title,
+                "changes": serialize_update_data( update_data)
             }
     )
 
@@ -164,6 +186,7 @@ def notify_inventory_update(session: Session, inventory_item: InventoryItem, upd
         activity_type=ActivityType.INVENTORY_UPDATED,
         project_id=inventory_item.project_id,
         metadatas={
+            "title": inventory_item.name,
             "changes": update_data
         }
     )
@@ -222,9 +245,40 @@ def get_user_activities(session: Session, user_id: int) -> List[Activity]:
         )
 
     # Retrieve activities for the associated projects
-    activities = session.exec(
-        select(Activity)
-        .where(Activity.project_id.in_([id_ for id_ in project_ids]))
-    ).all()
+    # Filtrar actividades por cliente y tipo
+    expense_types = {
+        ActivityType.EXPENSE_ADDED,
+        ActivityType.EXPENSE_APPROVED,
+        ActivityType.EXPENSE_UPDATED,
+        ActivityType.EXPENSE_DELETED,
+    }
+    if is_client:
+        # Si es un cliente, excluir actividades de tipo gasto
+        activities = session.exec(
+            select(Activity)
+            .where(
+                Activity.project_id.in_(project_ids),
+                ~Activity.activity_type.in_(expense_types)
+            )
+            .options(
+                selectinload(Activity.task),
+                selectinload(Activity.project),
+                selectinload(Activity.expense),
+                selectinload(Activity.inventory_item)
+            )
+        ).all()
+    else:
+        # Siendo un admin, incluir todas las actividades
+        activities = session.exec(
+            select(Activity)
+            .where(Activity.project_id.in_(project_ids))
+            .options(
+                selectinload(Activity.task),
+                selectinload(Activity.project),
+                selectinload(Activity.expense),
+                selectinload(Activity.inventory_item)
+            )
+        ).all()
+
 
     return activities

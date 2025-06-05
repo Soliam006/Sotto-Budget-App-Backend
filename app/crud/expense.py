@@ -200,9 +200,20 @@ def delete_project_expense(
         session: Session,
         project_id: int,
         expense_id: int
-) -> None:
-    expense = get_project_expense(session, project_id, expense_id)
-    session.delete(expense)
+):
+    # Verificar que el proyecto existe
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    # Verificar que el gasto existe en el proyecto
+    expense = session.exec(
+        select(Expense)
+        .where(Expense.id == expense_id)
+        .where(Expense.project_id == project_id)
+    ).first()
+    if not expense:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found in this project")
 
     # Eliminar la relación entre el proyecto y el gasto
     link = session.exec( select(ProjectExpenseLink)

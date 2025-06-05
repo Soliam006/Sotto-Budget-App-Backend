@@ -1,8 +1,8 @@
 """Final Schema
 
-Revision ID: 8e3bd8770832
+Revision ID: 649c498ca732
 Revises: 
-Create Date: 2025-05-29 18:30:05.592653
+Create Date: 2025-06-04 23:05:43.097596
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = '8e3bd8770832'
+revision: str = '649c498ca732'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -165,12 +165,14 @@ def upgrade() -> None:
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('task_id', sa.Integer(), nullable=True),
     sa.Column('expense_id', sa.Integer(), nullable=True),
+    sa.Column('inventory_item_id', sa.Integer(), nullable=True),
     sa.Column('activity_type', sa.Enum('TASK_CREATED', 'TASK_COMPLETED', 'TASK_UPDATED', 'TASK_DELETED', 'EXPENSE_ADDED', 'EXPENSE_APPROVED', 'EXPENSE_UPDATED', 'EXPENSE_DELETED', 'INVENTORY_ADDED', 'INVENTORY_UPDATED', 'INVENTORY_DELETED', name='activitytype'), nullable=False),
     sa.Column('title_project', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('is_read', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('metadatas', sa.JSON(), nullable=True),
     sa.ForeignKeyConstraint(['expense_id'], ['expense.id'], ),
+    sa.ForeignKeyConstraint(['inventory_item_id'], ['inventoryitem.id'], ),
     sa.ForeignKeyConstraint(['project_id'], ['project.id'], ),
     sa.ForeignKeyConstraint(['task_id'], ['task.id'], ),
     sa.PrimaryKeyConstraint('id')

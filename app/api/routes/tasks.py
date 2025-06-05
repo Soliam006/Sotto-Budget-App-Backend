@@ -118,10 +118,18 @@ async def update_task(
     except HTTPException as e:
         return JSONResponse(
             status_code=e.status_code,
-            content={"detail": e.detail}
+            content={
+                "statusCode": e.status_code,
+                "data": None,
+                "message": e.detail
+            }
         )
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"detail": str(e)}
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
         )

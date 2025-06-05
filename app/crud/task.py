@@ -47,7 +47,12 @@ def create_task_for_project(
         )
 
     # Verificar worker
-    worker = session.get(Worker, task_data.worker_id)
+    worker = session.exec(
+        select(Worker)
+        .where(Worker.id == task_data.worker_id)
+        .options(selectinload(Worker.user))  # Carga el usuario relacionado
+    ).first()
+
     if not worker or worker.user.role != UserRole.WORKER:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -83,6 +88,7 @@ def create_task_for_project(
     send_task_notifications(
         session=session,
         task=new_task,
+        worker_name= worker.user.name,
         project_id=project_id
     )
 
@@ -172,6 +178,9 @@ def delete_project_task(
         select(Task)
         .where(Task.id == task_id)
         .where(Task.project_id == project_id)
+        .options(
+            selectinload(Task.worker)  # Carga el worker relacionado
+        )
     ).first()
 
     if not task:
@@ -183,6 +192,7 @@ def delete_project_task(
     task_data = {
         "id": task.id,
         "title": task.title,
+        "description": task.description,
         "status": task.status
     }
     

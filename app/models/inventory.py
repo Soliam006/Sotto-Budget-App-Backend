@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import model_validator
 
 from .deps import Field, Relationship, SQLModel, Enum, Optional
@@ -28,6 +30,8 @@ class InventoryItem(SQLModel, table=True):
 
     # Relación con Project
     project: Optional["Project"] = Relationship(back_populates="inventory_items")
+
+    activities: List["Activity"] = Relationship(back_populates="inventory_item")
 
     class Config:
         validate_by_name = True  # Para usar alias (unitCost)

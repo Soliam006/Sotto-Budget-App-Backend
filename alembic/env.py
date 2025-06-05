@@ -10,7 +10,7 @@ from app.models.expense import Expense, ExpenseOut, ExpenseCreate, ExpenseUpdate
 from app.models.project_client import ProjectClient
 from app.models.project_team import ProjectTeamLink
 from app.models.project_expense import ProjectExpenseLink
-from app.models.notifications import *
+from app.models.activity import *
 from app.models.inventory import *
 from app.models.task import *
 

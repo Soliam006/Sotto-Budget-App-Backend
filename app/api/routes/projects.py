@@ -118,7 +118,8 @@ async def create_project(
             }
         )
 
-    return Response(statusCode=200, data=new_project, message="Project created successfully")
+    return Response(statusCode=200, data=crud.get_project_details( session= session, project_id=new_project.id),
+                    message="Project created successfully")
 
 
 @router.post("/add_client/{project_id}", response_model=Response,

@@ -34,7 +34,7 @@ def get_project_id(*, session: Session, project_id: int) -> Project | None:
 def create_project(*, session: Session, project_data: ProjectCreate, admin_id: int) -> Project:
     # Verifica si ya existe un proyecto con el mismo título
     existing_project = session.exec(
-        select(Project).where(Project.title == project_data.title)
+        select(Project).where(Project.title == project_data.title and Project.admin_id == admin_id)
     ).first()
     if existing_project:
         raise HTTPException(status_code=400, detail="Project with this title already exists")

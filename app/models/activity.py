@@ -1,5 +1,4 @@
-from typing import Any, Dict, Tuple
-from sqlalchemy import JSON
+from typing import Any, Dict
 from sqlalchemy import JSON
 from sqlmodel import Session
 from app.models.project import Project
@@ -26,6 +25,7 @@ class Activity(SQLModel, table=True):
     
     task_id: Optional[int] = Field(foreign_key="task.id", default=None)
     expense_id: Optional[int] = Field(foreign_key="expense.id", default=None)
+    inventory_item_id: Optional[int] = Field(foreign_key="inventoryitem.id", default=None)
     
     activity_type: ActivityType
     title_project: str = Field(default="")
@@ -40,17 +40,25 @@ class Activity(SQLModel, table=True):
     )
     task: Optional["Task"] = Relationship(
         back_populates="activities",
-        sa_relationship_kwargs={"lazy": "selectin"}
+        sa_relationship_kwargs={"lazy": "joined"}
     )
     expense: Optional["Expense"] = Relationship(
         back_populates="activities",
-        sa_relationship_kwargs={"lazy": "selectin"}
+        sa_relationship_kwargs={"lazy": "joined"}
     )
-    
+    inventory_item: Optional["InventoryItem"] = Relationship(
+        back_populates="activities",
+        sa_relationship_kwargs={"lazy": "joined"}
+    )
+
 
 class BasicInfo(SQLModel):
     id: int
     title: str
+
+    @classmethod
+    def from_orm(cls, obj: Any) -> "BasicInfo":
+        return cls(id=obj.id, title=obj.title)
 
 class ActivityOut(SQLModel):
     id: int
@@ -61,10 +69,28 @@ class ActivityOut(SQLModel):
     project: BasicInfo = Field(default=None)
     task: Optional[BasicInfo] = None
     expense: Optional[BasicInfo] = None
+    inventory_item: Optional[BasicInfo] = None
     metadatas: Dict[str, Any] = Field(default={})
 
     class Config:
         from_attributes = True
+    @classmethod
+    def from_activity(cls, activity: Activity):
+        return cls(
+            id=activity.id,
+            activity_type=activity.activity_type,
+            title_project=activity.title_project,
+            is_read=activity.is_read,
+            created_at=activity.created_at,
+            project=BasicInfo.from_orm(activity.project),
+            task=BasicInfo.from_orm(activity.task) if activity.task else None,
+            expense=BasicInfo.from_orm(activity.expense) if activity.expense else None,
+            inventory_item={
+                "id": activity.inventory_item.id,
+                "title": activity.inventory_item.name
+            }if activity.inventory_item else None,
+            metadatas=activity.metadatas
+        )
 
 
 class ActivityService:
@@ -77,16 +103,20 @@ class ActivityService:
         project_id: int,
         task_id: Optional[int] = None,
         expense_id: Optional[int] = None,
+        inventory_item_id: Optional[int] = None,
         metadatas: Optional[dict] = None
     ) -> Activity:
         project = self.session.get(Project, project_id)
         if not project:
             raise ValueError("Project not found")
+
+        print("-------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TASK ID:", task_id)
         
         activity = Activity(
             project_id=project_id,
             task_id=task_id,
             expense_id=expense_id,
+            inventory_item_id=inventory_item_id,
             activity_type=activity_type,
             title_project=project.title,
             metadatas=metadatas or {}
