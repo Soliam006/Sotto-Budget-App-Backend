@@ -13,7 +13,7 @@ from app.models.project_client import ProjectClient
 from app.models.project_expense import ProjectExpenseLink
 from app.models.project_team import ProjectTeamLink
 from app.models.task import TaskStatus, task_to_out
-from app.models.user import Admin, Client, Worker, team_out, TeamOut, ClientSimpleOut
+from app.models.user import Admin, Client, Worker, team_out, TeamOut, ClientSimpleOut, WorkerRead
 
 
 def get_project_id(*, session: Session, project_id: int) -> Project | None:
@@ -228,6 +228,7 @@ def delete_project(session, project_id):
 def get_projects(session, admin_id: int):
     projects = session.exec(
         select(Project.id).where(Project.admin_id == admin_id)
+        .options(selectinload(Project.team))
     ).all()
     if not projects:
         raise HTTPException(status_code=404, detail="No projects found for this admin")
@@ -280,5 +281,5 @@ def get_project_details(session: Session, project_id: int) -> ProjectOut:
         admin=admin_name, limit_budget=project.limit_budget, currentSpent=current_spent,
         progress=progress, location=project.location, start_date=project.start_date, end_date=project.end_date,
         status=project.status, expenses=expenses_out, expenseCategories=expense_categories,
-        clients=clients_out, tasks=[task_to_out(t) for t in project.tasks], team=[team_member_to_out(w) for w in project.team]
+        clients=clients_out, tasks=[task_to_out(t) for t in project.tasks], team=[WorkerRead.from_worker(w) for w in project.team]
     )

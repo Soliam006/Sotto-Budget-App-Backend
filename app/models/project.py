@@ -8,7 +8,7 @@ from .expense import ExpenseOut
 from .project_expense import ProjectExpenseLink
 from .project_team import ProjectTeamLink
 from .task import TaskOut
-from .user import Admin, Client, ClientSimpleOut, Worker
+from .user import Admin, Client, ClientSimpleOut, Worker, WorkerRead
 from .project_client import ProjectClient
 from .inventory import InventoryItem
 
@@ -109,7 +109,7 @@ class ProjectOut(BaseModel):
     expenseCategories: Dict[str, float]
     clients: List[ClientSimpleOut] = []  # Lista de clientes asignados
     tasks: List[TaskOut] = []  # Añade esta línea
-    team: List[TeamMemberOut] = []
+    team: List[WorkerRead] = []
     inventory: List[InventoryItem] = []
 
     class Config:

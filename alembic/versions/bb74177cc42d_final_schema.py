@@ -1,8 +1,8 @@
 """Final Schema
 
-Revision ID: 649c498ca732
+Revision ID: bb74177cc42d
 Revises: 
-Create Date: 2025-06-04 23:05:43.097596
+Create Date: 2025-06-05 20:46:12.045249
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = '649c498ca732'
+revision: str = 'bb74177cc42d'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -70,7 +70,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('is_deleted', sa.Boolean(), nullable=False),
-    sa.Column('specialty', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('specialty', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('availability', sa.Enum('FULL_TIME', 'PART_TIME', name='availabilityworker'), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
@@ -97,6 +98,13 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['admin_id'], ['admin.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('workerskill',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('worker_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['worker_id'], ['worker.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('expense',
@@ -210,6 +218,7 @@ def downgrade() -> None:
     op.drop_table('projectclient')
     op.drop_table('inventoryitem')
     op.drop_table('expense')
+    op.drop_table('workerskill')
     op.drop_table('project')
     op.drop_table('clientavailability')
     op.drop_table('worker')

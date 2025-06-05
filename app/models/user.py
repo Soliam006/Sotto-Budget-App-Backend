@@ -144,7 +144,6 @@ class UserOut(UserBase):
     """ Para devolver datos de un usuario en las respuestas,
         incluye su ID y los campos base. """
     id: int
-    # created_at, si quieres exponerlo también:
     created_at: datetime
     followers: List[FollowOut] = []
     following: List[FollowOut] = []
@@ -166,20 +165,69 @@ class Admin(SQLModel, table=True):
     user: User = Relationship(back_populates="admin_profile")
     projects: List["Project"] = Relationship(back_populates="admin")
 
+class AvailabilityWorker(str, Enum):
+    FULL_TIME = "Full-time"
+    PART_TIME = "Part-time"
+
 
 class Worker(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", unique=True)
     is_deleted: bool = Field(default=False)
-    specialty: Optional[str] = None
-    user: User = Relationship(back_populates="worker_profile")
+    specialty: str = Field(default=None)  # Esto corresponde a "role" en el frontend
+    skills: List["WorkerSkill"] = Relationship(back_populates="worker")
+    availability: Optional[AvailabilityWorker] = Field(default=None, description="Disponibilidad del trabajador")
+
+    user: "User" = Relationship(back_populates="worker_profile")
     tasks: List["Task"] = Relationship(back_populates="worker")
 
-    # Relación con proyectos
     projects: List["Project"] = Relationship(
         back_populates="team",
         link_model=ProjectTeamLink
     )
+
+class WorkerSkill(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    worker_id: int = Field(foreign_key="worker.id")
+    worker: Worker = Relationship(back_populates="skills")
+
+class WorkerTeamAdd(SQLModel):
+    worker_id: int
+    specialty: Optional[str] = None
+    skills: Optional[List[str]] = None
+    availability: Optional[AvailabilityWorker] = None
+
+class WorkerRead(SQLModel):
+    id: int
+    name: str  # Esto vendría del modelo User asociado
+    role: str  # Esto sería el campo specialty
+    skills: List[str]
+    availability: Optional[str] = None  # Disponibilidad del trabajador
+    contact: Optional[str] = None  # Email
+    projects: List[str] = []  # Lista de nombres de proyectos
+    tasksCompleted: int # Conteo de tareas completadas
+    tasksInProgress: int  # Conteo de tareas en progreso
+    efficiency: int # Porcentaje de eficiencia
+
+    @classmethod
+    def from_worker(cls, worker: Worker) -> "WorkerRead":
+        """Convierte un objeto Worker a WorkerRead"""
+        return cls(
+            id=worker.id,
+            name=worker.user.name,
+            role=worker.specialty,
+            skills=[skill.name for skill in worker.skills],
+            availability=worker.availability if worker.availability else None,
+            contact=worker.user.email,  # Asumiendo que quieres el email como contacto
+            projects=[project.title for project in worker.projects],  # Lista de títulos de proyectos
+            tasksCompleted=sum(task.status == "done" for task in worker.tasks),
+            tasksInProgress=sum(task.status == "in_progress" for task in worker.tasks),
+            efficiency=(
+                sum(task.status == "done" for task in worker.tasks) * 100 // len(worker.tasks)
+                if worker.tasks else 0
+            )
+        )
 
 
 class Client(SQLModel, table=True):
@@ -244,19 +292,13 @@ class TeamOut(SQLModel):
     role: str
     avatar: Optional[str] = None
 
-def team_out(worker: Worker, projectTeam: ProjectTeamLink) -> TeamOut:
+def team_out(worker: Worker, project_team: ProjectTeamLink) -> TeamOut:
     """Convierte un Worker y su relación en un objeto de salida"""
     return TeamOut(
         id=worker.id,
         name=worker.user.name,
-        role=projectTeam.role
+        role=project_team.role
     )
-
-
-class WorkerTeamAdd(SQLModel):
-    worker_id: int
-    specialty: Optional[str] = None
-
 
 class Token(SQLModel):
     access_token: str
