@@ -86,7 +86,7 @@ def get_follow_status(
 
 
 @router.post("/{user_id}", response_model=Response)
-def follow_user(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_client_permission)):
+def follow_user(user_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_worker_client_permission)):
     if user_id == current_user.id:
         return Response(statusCode=400, data=None, message="You can't follow yourself")
 

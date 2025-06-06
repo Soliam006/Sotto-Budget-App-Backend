@@ -5,7 +5,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 from sqlmodel import Session, select
-from app.models.user import User
+from app.models.user import User, UserOut
 from sqlalchemy import or_
 
 # Password hashing context
@@ -37,18 +37,18 @@ def get_user_by_username(*, session: Session, username: str) -> User | None:
     return session_user
 
 
-def authenticate_user_with_email(session: Session, email: str, password: str) -> Optional[User]:
+def authenticate_user_with_email(session: Session, email: str, password: str) -> UserOut:
     user = get_user_by_email(session=session, email=email)
     if not user or not verify_password(password, user.password):
         raise HTTPException(status_code=401, detail="Could not validate credentials")
-    return user
+    return UserOut.model_validate(user)
 
 
-def authenticate_user(session: Session, username: str, password: str) -> Optional[User]:
+def authenticate_user(session: Session, username: str, password: str) -> UserOut:
     user = get_user_by_username(session=session, username=username)
     if not user or  not verify_password(password, user.password):
         raise HTTPException(status_code=401, detail="Could not validate credentials")
-    return user
+    return UserOut.model_validate(user)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):

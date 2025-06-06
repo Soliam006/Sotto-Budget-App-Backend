@@ -13,7 +13,7 @@ from app.models.project_client import ProjectClient
 from app.models.project_expense import ProjectExpenseLink
 from app.models.project_team import ProjectTeamLink
 from app.models.task import TaskStatus, task_to_out
-from app.models.user import Admin, Client, Worker, team_out, TeamOut, ClientSimpleOut, WorkerRead
+from app.models.user import Admin, Client, Worker, team_out, TeamOut, ClientSimpleOut, WorkerRead, User, UserRole
 
 
 def get_project_id(*, session: Session, project_id: int) -> Project | None:
@@ -225,13 +225,38 @@ def delete_project(session, project_id):
     session.commit()
 
 
-def get_projects(session, admin_id: int):
-    projects = session.exec(
-        select(Project.id).where(Project.admin_id == admin_id)
-    ).all()
+def get_projects(session: Session, user_id: int) -> list[ProjectOut]:
+    user = session.exec(
+        select(User).where(User.id == user_id).options(
+            selectinload(User.admin_profile),
+            selectinload(User.client_profile),
+            selectinload(User.worker_profile)
+        )
+    ).first()
+
+    if user.role == UserRole.ADMIN:
+        projects = session.exec(
+            select(Project.id).where(Project.admin_id == user.admin_profile.id)
+        ).all()
+
+    elif user.role == UserRole.CLIENT:
+        # Si el usuario es un cliente, obtenemos los proyectos asociados a él
+        projects = session.exec(
+            select(Project.id)
+            .join(ProjectClient)
+            .where(ProjectClient.client_id == user.client_profile.id)
+        ).all()
+
+    else:
+        # Si el usuario es un trabajador, obtenemos los proyectos asociados a él
+        projects = session.exec(
+            select(Project.id)
+            .join(ProjectTeamLink)
+            .where(ProjectTeamLink.worker_id == user.id)
+        ).all()
 
     if not projects:
-        raise HTTPException(status_code=404, detail="No projects found for this admin")
+        raise HTTPException(status_code=404, detail=f"No projects found for this User {user.client_profile.id}")
 
     return [get_project_details(session=session, project_id=ids) for ids in projects]
 
@@ -241,6 +266,7 @@ def get_project_details(session: Session, project_id: int) -> ProjectOut:
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    print(f"------------!!!!!!!!!!Project {project.id} found, fetching details")
     current_spent = sum(exp.amount for exp in project.expenses if exp.status == ExpenseStatus.APPROVED)
 
     done_count = sum(1 for t in project.tasks if t.status == TaskStatus.DONE)

@@ -15,6 +15,8 @@ class UserRole(str, Enum):
 class AvailabilityWorker(str, Enum):
     FULL_TIME = "Full-time"
     PART_TIME = "Part-time"
+    AVAILABLE = "Available"
+    BUSY = "Busy"
 
 class FollowStatus(str, Enum):
     PENDING = "PENDING"
@@ -210,6 +212,7 @@ class WorkerRead(SQLModel):
     id: int
     name: str  # Esto vendría del modelo User asociado
     role: str  # Esto sería el campo specialty
+    phone: str  # Teléfono del trabajador
     skills: List[str]
     availability: Optional[str] = None  # Disponibilidad del trabajador
     contact: Optional[str] = None  # Email
@@ -225,6 +228,7 @@ class WorkerRead(SQLModel):
             id=worker.id,
             name=worker.user.name,
             role=worker.specialty,
+            phone=worker.user.phone,
             skills=[skill.name for skill in worker.skills],
             availability=worker.availability if worker.availability else None,
             contact=worker.user.email,  # Asumiendo que quieres el email como contacto
@@ -285,6 +289,7 @@ class ClientSimpleOut(BaseModel):
 class ClientOut(BaseModel):
     client_id: int
     budget_limit: Optional[float]
+    availabilities : Optional[List[ClientAvailability]] = []
 
 
 class AdminOut(BaseModel):

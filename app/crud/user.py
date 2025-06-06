@@ -1,6 +1,6 @@
 """ User related CRUD methods """
 from fastapi import HTTPException, status
-from typing import Any
+from typing import Any, List
 
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
@@ -72,7 +72,8 @@ def get_user_client(*, session: Session, user_id: int) -> ClientOut | None:
             client = session.exec(select(Client).where(Client.user_id == user.id, Client.is_deleted == False)).first()
             if client:
                 return ClientOut(budget_limit= client.budget_limit,
-                                 client_id=client.id)
+                                 client_id=client.id,
+                                 availabilities= get_availabilities( session=session, client_id=client.id))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Error al obtener el cliente")
     return None
@@ -103,8 +104,10 @@ def get_user_worker(*, session: Session, user_id: int) -> WorkerRead | None:
     return None
 
 
-def get_availabilities(*, session: Session, client_id: int) -> Any:
+def get_availabilities(*, session: Session, client_id: int) -> List[ClientAvailability]:
     availabilities = session.exec(select(ClientAvailability).where(ClientAvailability.client_id == client_id)).all()
+    if not availabilities:
+        return []
     return availabilities
 
 

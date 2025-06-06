@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from app.api.deps import get_current_user, get_current_active_superuser
 from app.models.project import ProjectCreate, ProjectUpdate
 from app.models.response import Response
-from app.models.user import User
+from app.models.user import User, UserOut
 import app.crud.project as crud
 import app.crud.task as task_crud
 from sqlmodel import Session
@@ -41,14 +41,12 @@ async def get_project(project_id: int,
         )
 
 
-@router.get("/", response_model=Response, dependencies=[Depends(get_current_user)])
-async def get_projects(current_user: User = Depends(get_current_user),
+@router.get("/", response_model=Response)
+async def get_projects(current_user: UserOut = Depends(get_current_user),
                        session: Session = Depends(get_session)):
+
     try:
-        projects = crud.get_projects(session=session,
-                                     admin_id=task_crud.get_admin_by_user_id(
-                                                        session=session,
-                                                        user_id=current_user.id).id)
+        projects = crud.get_projects(session=session, user_id=current_user.id)
 
         return Response(statusCode=200, data=projects, message="Projects found")
 

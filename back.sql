@@ -5,7 +5,9 @@ VALUES
     (1, 'Admin Will', 'admin_will', 'admin@school.com', '$2b$12$nCB79l3ZRFkV5MJWMr8v6.SsSLfNo9nyR5Kv3Idn7od5NXFVH3RMS', 'ADMIN', 'es', 0, '1234567890', 'Madrid', 'Administrador del proyecto', NOW()),
     (2, 'Construction Manager', 'const_manager', 'manager@school.com', '$2b$12$nCB79l3ZRFkV5MJWMr8v6.SsSLfNo9nyR5Kv3Idn7od5NXFVH3RMS', 'WORKER', 'es', 0, '2345678901', 'Madrid', 'Gerente de construcción', NOW()),
     (3, 'Architect', 'project_architect', 'architect@school.com', '$2b$12$nCB79l3ZRFkV5MJWMr8v6.SsSLfNo9nyR5Kv3Idn7od5NXFVH3RMS', 'WORKER', 'es', 0, '3456789012', 'Madrid', 'Arquitecto principal', NOW()),
-    (4, 'School District', 'school_client', 'client@school.com', '$2b$12$nCB79l3ZRFkV5MJWMr8v6.SsSLfNo9nyR5Kv3Idn7od5NXFVH3RMS', 'CLIENT', 'es', 0, '4567890123', 'Madrid', 'Distrito escolar', NOW());
+    (4, 'School District', 'school_client', 'client@school.com', '$2b$12$nCB79l3ZRFkV5MJWMr8v6.SsSLfNo9nyR5Kv3Idn7od5NXFVH3RMS', 'CLIENT', 'es', 0, '4567890123', 'Madrid', 'Distrito escolar', NOW()),
+    (5, 'International Client', 'international_client', 'client2@test.com', '$2b$12$nCB79l3ZRFkV5MJWMr8v6.SsSLfNo9nyR5Kv3Idn7od5NXFVH3RMS', 'CLIENT', 'es', 0, '5678901234', 'Sevilla', 'Cliente internacional', NOW());
+
 
 -- Insertar registros en tablas específicas de roles
 INSERT INTO admin (id, user_id, is_deleted) VALUES (1, 1, 0);
@@ -13,6 +15,7 @@ INSERT INTO worker (id, user_id, is_deleted, specialty) VALUES
                                                             (1, 2, 0, 'Construction Management'),
                                                             (2, 3, 0, 'Architecture');
 INSERT INTO client (id, user_id, budget_limit, is_deleted) VALUES (1, 4, 1500000, 0);
+INSERT INTO client (id, user_id, budget_limit, is_deleted) VALUES (2, 5, 2000000, 0);
 
 -- 2. Crear el proyecto principal -----------------------------------------------------------
 INSERT INTO project (id, title, description, admin_id, limit_budget, location, start_date, end_date, status, created_at, updated_at)
@@ -32,6 +35,10 @@ VALUES (
 
 -- 3. Asociar clientes y equipo al proyecto
 INSERT INTO projectclient (project_id, client_id, created_at) VALUES (1, 1, NOW());
+-- El CLiente debe seguir al admin del proyecto
+INSERT INTO follow (follower_id, following_id, status, created_at, updated_at) VALUES
+    (4, 1, 'ACCEPTED', NOW(), NOW());
+
 -- Worker debe seguir al admin del proyecto
 INSERT INTO follow (follower_id, following_id, status, created_at, updated_at) VALUES
     (2, 1, 'ACCEPTED', NOW(), NOW()),
@@ -75,8 +82,12 @@ VALUES
 -- 7. Registrar actividades/historial
 INSERT INTO activity (id, project_id, task_id, expense_id, activity_type, title_project, is_read, created_at, metadatas)
 VALUES
-    (1, 1, 4, NULL, 'TASK_CREATED', 'Eco-Friendly School Building', 1, '2025-05-01 09:00:00', '{"user": "admin_will"}'),
-    (2, 1, 4, NULL, 'TASK_COMPLETED', 'Eco-Friendly School Building', 0, '2025-05-28 17:30:00', '{"user": "project_architect"}'),
-    (3, 1, 2, NULL, 'TASK_CREATED', 'Eco-Friendly School Building', 1, '2025-06-01 10:15:00', '{"user": "admin_will"}'),
-    (4, 1, NULL, 1, 'EXPENSE_ADDED', 'Eco-Friendly School Building', 1, '2025-06-05 11:20:00', '{"amount": 52500}'),
-    (5, 1, NULL, 1, 'EXPENSE_APPROVED', 'Eco-Friendly School Building', 0, '2025-06-05 14:30:00', '{"approved_by": "admin_will"}');
+    (1, 1, 4, NULL, 'TASK_CREATED', 'Eco-Friendly School Building', 1,
+     '2025-05-01 09:00:00', '{"user": "admin_will", "title": "Design Eco Features"}'),
+    (2, 1, 4, NULL, 'TASK_COMPLETED', 'Eco-Friendly School Building', 0, '2025-05-28 17:30:00', '{"user": "project_architect", "title": "Design Eco Features"}'),
+    (3, 1, 2, NULL, 'TASK_CREATED', 'Eco-Friendly School Building', 1, '2025-06-01 10:15:00', '{"user": "admin_will", "title": "Site Preparation"}'),
+    (4, 1, 2, NULL, 'TASK_UPDATED', 'Eco-Friendly School Building', 0, '2025-06-02 12:00:00', '{"user": "const_manager", "title": "Site Preparation"}'),
+    (5, 1, NULL, 1, 'EXPENSE_ADDED', 'Eco-Friendly School Building', 1, '2025-06-05 11:20:00', '{"amount": 52500, "category": "MATERIALS", "description": "Initial bamboo flooring purchase", "status": "APPROVED", "title": "Bamboo Flooring Purchase"}'),
+    (6, 1, NULL, 2, 'EXPENSE_UPDATED', 'Eco-Friendly School Building', 1, '2025-06-05 12:00:00', '{"amount": 25000, "category": "LABOUR", "description": "First week construction labor", "status": "PENDING", "title": "Construction Labor Week 1"}'),
+    (7, 1, NULL, 3, 'EXPENSE_UPDATED', 'Eco-Friendly School Building', 0, '2025-06-05 12:30:00', '{"amount": 50000, "category": "PRODUCTS", "description": "Deposit for solar panels", "status": "PENDING", "title": "Solar Panels Deposit"}');
+

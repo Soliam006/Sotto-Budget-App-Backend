@@ -24,12 +24,7 @@ async def read_users_me(current_user: UserOut = Depends(get_current_user),
 
         current_user = enrich_user_with_follow_data(session=session, user=current_user)
 
-        if current_user.role == UserRole.CLIENT:
-            current_user.client = crud.get_user_client(session=session, user_id=current_user.id)
-        elif current_user.role == UserRole.WORKER:
-            current_user.worker = crud.get_user_worker(session=session, user_id=current_user.id)
-        elif current_user.role == UserRole.ADMIN:
-            current_user.admin = crud.get_user_admin(session=session, user_id=current_user.id)
+        current_user = enrich_user_with_role_data(session=session, current_user=current_user)
 
     except HTTPException as e:
         return JSONResponse(
@@ -125,11 +120,9 @@ async def get_user_client(user_id: int, session: Session = Depends(get_session),
     if client is None:
         return Response(statusCode=404, data=None, message="User not found")
 
-    list_availabilities = crud.get_availabilities(session=session, client_id=client.client_id)
-
     client = enrich_user_with_follow_data(session=session, user=client)
 
-    return Response(statusCode=200, data={"user": client, "availabilities": list_availabilities}, message="User found")
+    return Response(statusCode=200, data={"user": client}, message="User found")
 
 # ----------------------------- POSTS --------------------------------
 def enrich_user_with_follow_data(session: Session, user: UserOut|ClientOut|WorkerOut|AdminOut):
@@ -141,6 +134,14 @@ def enrich_user_with_follow_data(session: Session, user: UserOut|ClientOut|Worke
     user.requests = [FollowOut.from_follow(f, current_user_id=user.id) for f in requests]
     return user
 
+def enrich_user_with_role_data(session: Session, current_user:UserOut):
+    if current_user.role == UserRole.CLIENT:
+        current_user.client = crud.get_user_client(session=session, user_id=current_user.id)
+    elif current_user.role == UserRole.WORKER:
+        current_user.worker = crud.get_user_worker(session=session, user_id=current_user.id)
+    elif current_user.role == UserRole.ADMIN:
+        current_user.admin = crud.get_user_admin(session=session, user_id=current_user.id)
+    return current_user
 
 @router.post("/", response_model=Response)
 async def create_user(new_user: UserRegister, session: Session = Depends(get_session)):
@@ -173,31 +174,32 @@ async def login_for_access_token(credentials: LoginForm,
                                  session: Session = Depends(get_session)):
     try:
         user = authenticate_user(session=session, username=credentials.username, password=credentials.password)
-    except HTTPException as e:
-        return Response(statusCode=e.status_code, data=None, message=e.detail)
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=access_token_expires)
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=access_token_expires)
 
-    # Si el User está autenticado, buscamos si tiene un perfil de Admin, Worker o Client
-    if user.role == UserRole.ADMIN:
-        user_role = crud.get_user_admin(session=session, user_id=user.id)
-    elif user.role == UserRole.WORKER:
-        user_role = crud.get_user_worker(session=session, user_id=user.id)
-    else:
-        user_role = crud.get_user_client(session=session, user_id=user.id)
-        list_availabilities = crud.get_availabilities(session=session, client_id=user_role.client_id)
-
+        # Si el User está autenticado, buscamos si tiene un perfil de Admin, Worker o Client
+        user_role = enrich_user_with_role_data( session=session, current_user=user)
         user_role = enrich_user_with_follow_data(session=session, user=user_role)
 
-        return Response(statusCode=200,
-                        data={ "access_token": access_token,
-                               "token_type": "bearer",
-                               "user": user_role,
-                               "availabilities": list_availabilities},
-                        message="Welcome Back "+user_role.username)
-
-    user_role = enrich_user_with_follow_data(session=session, user=user_role)
+    except HTTPException as e:
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "statusCode": e.status_code,
+                "data": None,
+                "message": e.detail
+            }
+            )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
 
     return Response(statusCode=200,
                     data={ "access_token": access_token,
@@ -217,23 +219,29 @@ async def login_for_access_token(credentials: LoginForm,
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=access_token_expires)
 
-    # Si el User está autenticado, buscamos si tiene un perfil de Admin, Worker o Client
-    if user.role == UserRole.ADMIN:
-        user_role = crud.get_user_admin(session=session, user_id=user.id)
-    elif user.role == UserRole.WORKER:
-        user_role = crud.get_user_worker(session=session, user_id=user.id)
-    else:
-        user_role = crud.get_user_client(session=session, user_id=user.id)
-        list_availabilities = crud.get_availabilities(session=session, client_id=user_role.client_id)
-        user_role = enrich_user_with_follow_data(session=session, user=user_role)
-        return Response(statusCode=200,
-                        data={ "access_token": access_token,
-                               "token_type": "bearer",
-                               "user": user_role,
-                               "availabilities": list_availabilities},
-                        message="Welcome Back "+user_role.username)
+    try:
+        user_role = enrich_user_with_role_data(session=session, current_user=user)
 
-    user_role = enrich_user_with_follow_data(session=session, user=user_role)
+        user_role = enrich_user_with_follow_data(session=session, user=user_role)
+    except HTTPException as e:
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "statusCode": e.status_code,
+                "data": None,
+                "message": e.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
+
     return Response(statusCode=200,
                     data={ "access_token": access_token,
                            "token_type": "bearer",
