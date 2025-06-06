@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from app.core.security import get_password_hash
 from app.crud.follow import get_workers_follows
 from app.models.user import User, UserUpdate, UserOut, UserRegister, UserRole, Admin, Client, Worker, \
-    ClientAvailability, ClientOut, AdminOut, WorkerOut, WorkerRead, WorkerSkill
+    ClientAvailability, ClientOut, AdminOut, WorkerOut, WorkerRead, WorkerSkill, ClientAvailabilityOut
 
 crud_id = "---------------------[User CRUD]"
 
@@ -104,11 +104,15 @@ def get_user_worker(*, session: Session, user_id: int) -> WorkerRead | None:
     return None
 
 
-def get_availabilities(*, session: Session, client_id: int) -> List[ClientAvailability]:
+def get_availabilities(*, session: Session, client_id: int) -> List[ClientAvailabilityOut]:
     availabilities = session.exec(select(ClientAvailability).where(ClientAvailability.client_id == client_id)).all()
     if not availabilities:
         return []
-    return availabilities
+    return [ClientAvailabilityOut (
+                id=availability.id,
+                start_date=availability.start_date,
+                end_date=availability.end_date
+            ) for availability in availabilities]
 
 
 def update_user(*, session: Session, user_id: int, user: UserUpdate) -> UserOut:
@@ -133,18 +137,26 @@ def update_user(*, session: Session, user_id: int, user: UserUpdate) -> UserOut:
             existing_user = session.exec(
                 select(User).where(User.username == user.username)
             ).first()
+            # Regresar si el usuario ya existe y es el mismo
+            if existing_user and existing_user.id == user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El usuario con ese username ya existe"
+                )
 
         # Si aún no se encontró, buscar por email
-        if not existing_user and user.email:
+        if user.email:
             existing_user = session.exec(
                 select(User).where(User.email == user.email)
             ).first()
 
-        if existing_user and existing_user.id != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="El usuario con ese username o email ya existe"
-            )
+            if existing_user:
+                # Regresar si el usuario ya existe y es el mismo
+                if existing_user and existing_user.id == user_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="El usuario con ese email ya existe"
+                    )
 
     # 3. Extraer los campos a actualizar (solo los que llegan en la petición)
     user_data = user.model_dump(exclude_unset=True)
@@ -211,13 +223,11 @@ def update_user(*, session: Session, user_id: int, user: UserUpdate) -> UserOut:
             db_user=db_user,
             user_data=user_data
         )
-        if "budget_limit" in user_data and db_user.role == UserRole.CLIENT:
-            # Actualizar el budget limit del cliente
-            client_profile = db_user.client_profile
-            if client_profile:
-                client_profile.budget_limit = user_data["budget_limit"]
-                session.add(client_profile)
-
+        update_client(
+            session=session,
+            db_user=db_user,
+            user_data=user_data
+        )
 
         # 6. Actualizar campos en el objeto `User`
         db_user.sqlmodel_update(user_data)
@@ -239,6 +249,30 @@ def update_user(*, session: Session, user_id: int, user: UserUpdate) -> UserOut:
         description=db_user.description, email=db_user.email, role=db_user.role, phone=db_user.phone,
         language_preference=db_user.language_preference, created_at=db_user.created_at
     )
+
+def update_client(*, session: Session, db_user: User, user_data: dict):
+    if "budget_limit" in user_data and db_user.role == UserRole.CLIENT:
+        # Actualizar el budget limit del cliente
+        client_profile = db_user.client_profile
+        if client_profile:
+            client_profile.budget_limit = user_data["budget_limit"]
+            session.add(client_profile)
+
+    if "availabilities" in user_data and db_user.role == UserRole.CLIENT:
+        # Actualizar las disponibilidades del cliente
+        client_profile = db_user.client_profile
+        if client_profile:
+            # Eliminar las disponibilidades existentes
+            session.exec(
+                select(ClientAvailability).where(ClientAvailability.client_id == client_profile.id)
+            ).delete()
+            # Añadir las nuevas disponibilidades
+            for availability in user_data["availabilities"]:
+                new_availability = ClientAvailability(
+                    client_id=client_profile.id,
+                    **availability
+                )
+                session.add(new_availability)
 
 def update_worker(*, session: Session, db_user: User, user_data: dict) -> None:
     availability = "availability" in user_data

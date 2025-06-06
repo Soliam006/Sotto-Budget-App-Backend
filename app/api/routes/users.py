@@ -256,9 +256,23 @@ async def update_user(user_id: int, user: UserUpdate, session: Session = Depends
     try:
         result = crud.update_user(session=session, user_id=user_id, user=user)
     except HTTPException as e:
-        return Response(statusCode=e.status_code, data=None, message=e.detail)
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "statusCode": e.status_code,
+                "data": None,
+                "message": e.detail
+            }
+        )
     except Exception as e:
-        return Response(statusCode=400, data=None, message=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
 
     if result is None:
         return Response(statusCode=404, data=None, message="User not found")

@@ -93,6 +93,7 @@ class UserUpdate(SQLModel):
     # Solo para WORKERS
     skills: Optional[List[str]] = None
     availability: Optional[AvailabilityWorker] = None  # Disponibilidad del trabajador
+    availabilities: Optional[List["ClientAvailabilityOut"]] = None  # Disponibilidad del cliente
 
 
 class Follow(SQLModel, table=True):
@@ -262,7 +263,10 @@ class ClientAvailability(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     client: Client = Relationship(back_populates="availabilities")
 
-
+class ClientAvailabilityOut(SQLModel):
+    id: int
+    start_date: datetime
+    end_date: datetime
 # -------------------------------
 # Otros Schemas / Token / Login
 # -------------------------------
@@ -289,7 +293,7 @@ class ClientSimpleOut(BaseModel):
 class ClientOut(BaseModel):
     client_id: int
     budget_limit: Optional[float]
-    availabilities : Optional[List[ClientAvailability]] = []
+    availabilities : Optional[List[ClientAvailabilityOut]] = []
 
 
 class AdminOut(BaseModel):
