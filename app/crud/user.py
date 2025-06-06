@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from app.core.security import get_password_hash
 from app.crud.follow import get_workers_follows
 from app.models.user import User, UserUpdate, UserOut, UserRegister, UserRole, Admin, Client, Worker, \
-    ClientAvailability, ClientOut, AdminOut, WorkerOut, WorkerRead
+    ClientAvailability, ClientOut, AdminOut, WorkerOut, WorkerRead, WorkerSkill
 
 crud_id = "---------------------[User CRUD]"
 
@@ -110,7 +110,15 @@ def get_availabilities(*, session: Session, client_id: int) -> Any:
 
 def update_user(*, session: Session, user_id: int, user: UserUpdate) -> UserOut:
     # 1. Obtener el usuario de la base de datos
-    db_user: User | None = session.get(User, user_id)
+    db_user = session.exec(
+        select(User)
+        .where(User.id == user_id)
+        .options(
+            selectinload(User.worker_profile),
+            selectinload(User.client_profile)
+        )
+    ).first()
+
     if not db_user:
         raise HTTPException( status_code=status.HTTP_404_NOT_FOUND,  detail="Usuario no encontrado" )
 
@@ -194,22 +202,78 @@ def update_user(*, session: Session, user_id: int, user: UserUpdate) -> UserOut:
                     db_user.client_profile = client
                     session.add(client)
 
-    # 6. Actualizar campos en el objeto `User`
-    db_user.sqlmodel_update(user_data)
-    session.add(db_user)
+    try:
+        update_worker(
+            session=session,
+            db_user=db_user,
+            user_data=user_data
+        )
+        if "budget_limit" in user_data and db_user.role == UserRole.CLIENT:
+            # Actualizar el budget limit del cliente
+            client_profile = db_user.client_profile
+            if client_profile:
+                client_profile.budget_limit = user_data["budget_limit"]
+                session.add(client_profile)
 
-    # 7. Confirmar cambios
-    session.commit()
-    session.refresh(db_user)
+
+        # 6. Actualizar campos en el objeto `User`
+        db_user.sqlmodel_update(user_data)
+        session.add(db_user)
+
+        # 7. Confirmar cambios
+        session.commit()
+        session.refresh(db_user)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error al actualizar el usuario: {str(e)}"
+        )
 
     # 8. Retornar datos en el modelo de salida
     return UserOut(
-        id=user.id, name=user.name, username=user.username, location=user.location,
-        description=user.description, email=user.email, role=user.role, phone=user.phone,
-        language_preference=user.language_preference, created_at=user.created_at
+        id=db_user.id, name=db_user.name, username=db_user.username, location=db_user.location,
+        description=db_user.description, email=db_user.email, role=db_user.role, phone=db_user.phone,
+        language_preference=db_user.language_preference, created_at=db_user.created_at
     )
 
+def update_worker(*, session: Session, db_user: User, user_data: dict) -> None:
+    availability = "availability" in user_data
+    if availability:
+        # Actualizar la disponibilidad del worker
+        db_user.worker_profile.availability = user_data["availability"]
 
+    if "skills" in user_data:
+        # Hay que añadirlos al perfil del worker
+        if db_user.role == UserRole.WORKER:
+
+            existing_links = session.exec(
+                select( WorkerSkill ) .where(
+                    WorkerSkill.worker_id == db_user.worker_profile.id
+                )
+            ).all()
+
+            if existing_links:
+                # Si ya existen skills, los eliminamos
+                for link in existing_links:
+                    session.delete(link)
+                session.commit()
+                # Ahora creamos los nuevos skills
+                for skill in user_data["skills"]:
+                    new_skill = WorkerSkill(
+                        worker_id=db_user.worker_profile.id,
+                        name=skill
+                    )
+                    session.add(new_skill)
+
+            else:
+                # Si no existe, creamos los nuevos skills
+                for skill in user_data["skills"]:
+                    new_skill = WorkerSkill(
+                        worker_id=db_user.worker_profile.id,
+                        name=skill
+                    )
+                    session.add(new_skill)
 
 def delete_user(*, session: Session, user_id: int) -> Any:
     user = session.get(User, user_id)

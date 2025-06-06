@@ -12,6 +12,14 @@ class UserRole(str, Enum):
     WORKER = "worker"
     CLIENT = "client"
 
+class AvailabilityWorker(str, Enum):
+    FULL_TIME = "Full-time"
+    PART_TIME = "Part-time"
+
+class FollowStatus(str, Enum):
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
 
 class UserBase(SQLModel):
     """ Campos comunes para los esquemas de lectura/salida. """
@@ -79,11 +87,11 @@ class UserUpdate(SQLModel):
     phone: Optional[str] = None
     location: Optional[str] = None
     description: Optional[str] = None
+    budget_limit: Optional[float] = None  # Solo para CLIENTES
+    # Solo para WORKERS
+    skills: Optional[List[str]] = None
+    availability: Optional[AvailabilityWorker] = None  # Disponibilidad del trabajador
 
-class FollowStatus(str, Enum):
-    PENDING = "PENDING"
-    ACCEPTED = "ACCEPTED"
-    REJECTED = "REJECTED"
 
 class Follow(SQLModel, table=True):
     follower_id: int = Field(foreign_key="user.id", primary_key=True)
@@ -168,9 +176,6 @@ class Admin(SQLModel, table=True):
     user: User = Relationship(back_populates="admin_profile")
     projects: List["Project"] = Relationship(back_populates="admin")
 
-class AvailabilityWorker(str, Enum):
-    FULL_TIME = "Full-time"
-    PART_TIME = "Part-time"
 
 
 class Worker(SQLModel, table=True):
