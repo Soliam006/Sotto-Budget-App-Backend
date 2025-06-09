@@ -48,6 +48,9 @@ async def get_projects(current_user: UserOut = Depends(get_current_user),
     try:
         projects = crud.get_projects(session=session, user_id=current_user.id)
 
+        if not projects:
+            return Response(statusCode=200, data=None, message="No projects found")
+
         return Response(statusCode=200, data=projects, message="Projects found")
 
     except HTTPException as http_exc:

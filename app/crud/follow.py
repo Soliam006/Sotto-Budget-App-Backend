@@ -159,10 +159,7 @@ def get_workers_follows(session: Session, user_id: int):
     worker_ids = [fid[0] if isinstance(fid, tuple) else fid for fid in follows]
 
     if not worker_ids:
-        raise HTTPException(
-            status_code=404,
-            detail="No workers found following this user"
-        )
+        return []
 
     # Obtener los Workers que siguen al Admin
     workers = session.exec(

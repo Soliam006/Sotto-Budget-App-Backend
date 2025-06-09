@@ -256,7 +256,7 @@ def get_projects(session: Session, user_id: int) -> list[ProjectOut]:
         ).all()
 
     if not projects:
-        raise HTTPException(status_code=404, detail=f"No projects found for this User {user.client_profile.id}")
+        return []
 
     return [get_project_details(session=session, project_id=ids) for ids in projects]
 

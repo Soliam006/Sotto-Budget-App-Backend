@@ -185,7 +185,7 @@ class Worker(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", unique=True)
     is_deleted: bool = Field(default=False)
-    specialty: str = Field(default=None)  # Esto corresponde a "role" en el frontend
+    specialty: Optional[str] = Field(default=None)
     skills: List["WorkerSkill"] = Relationship(back_populates="worker")
     availability: Optional[AvailabilityWorker] = Field(default=None, description="Disponibilidad del trabajador")
 
@@ -228,7 +228,7 @@ class WorkerRead(SQLModel):
         return cls(
             id=worker.id,
             name=worker.user.name,
-            role=worker.specialty,
+            role=worker.specialty if worker.specialty else "N/A",
             phone=worker.user.phone,
             skills=[skill.name for skill in worker.skills],
             availability=worker.availability if worker.availability else None,

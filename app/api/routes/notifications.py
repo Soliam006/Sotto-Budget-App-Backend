@@ -31,7 +31,7 @@ def get_client_activities(
         )
 
         if not activities:
-            return Response(statusCode=404, data=None, message="No activities found for this client")
+            return Response(statusCode=200, data=None, message="No activities found for this client")
         
         return Response(
             statusCode=200,

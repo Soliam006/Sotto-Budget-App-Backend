@@ -1,8 +1,8 @@
 """Final Schema
 
-Revision ID: bb74177cc42d
+Revision ID: 2ed5696f5d3b
 Revises: 
-Create Date: 2025-06-05 20:46:12.045249
+Create Date: 2025-06-09 14:10:28.122559
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'bb74177cc42d'
+revision: str = '2ed5696f5d3b'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -70,8 +70,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('is_deleted', sa.Boolean(), nullable=False),
-    sa.Column('specialty', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('availability', sa.Enum('FULL_TIME', 'PART_TIME', name='availabilityworker'), nullable=True),
+    sa.Column('specialty', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('availability', sa.Enum('FULL_TIME', 'PART_TIME', 'AVAILABLE', 'BUSY', name='availabilityworker'), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
