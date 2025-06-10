@@ -242,6 +242,10 @@ class WorkerRead(SQLModel):
             )
         )
 
+class WorkerDataBackend(WorkerRead):
+    created:bool
+    updated:bool
+    deleted:bool
 
 class Client(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

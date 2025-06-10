@@ -61,6 +61,11 @@ class ExpenseUpdate(SQLModel):
     class Config:
         validate_by_name = True
 
+class ExpenseBackend(ExpenseUpdate):
+    id: int
+    created: bool
+    updated: bool
+    deleted: bool
 
 class ExpenseOut(BaseModel):
     id: int

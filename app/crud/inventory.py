@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from app.crud.notification import send_inventory_notifications, notify_inventory_update, notify_inventory_deletion
 from app.models.inventory import (InventoryItem, InventoryItemCreate, InventoryItemUpdate,
-                                  InventoryCategory, InventoryStatus)
+                                  InventoryCategory, InventoryStatus, InventoryBackend)
 from app.models.project import Project
 
 
@@ -131,6 +131,33 @@ def update_inventory_item(
     )
 
     return existing_item
+
+def update_inventories_in_project(
+        session: Session,
+        project_id: int,
+        inventories_data: list[InventoryBackend]
+):
+    """Actualiza los items de inventario en un proyecto"""
+    for inventory_data in inventories_data:
+        if inventory_data.updated:
+            update_inventory_item(
+                session=session,
+                project_id=project_id,
+                item_id=inventory_data.id,
+                item_data=InventoryItemUpdate.model_validate(inventory_data)
+            )
+        elif inventory_data.created:
+            create_inventory_item(
+                session=session,
+                project_id=project_id,
+                item_data=InventoryItemCreate.model_validate(inventory_data)
+            )
+        else:
+            delete_inventory_item(
+                session=session,
+                project_id=project_id,
+                item_id=inventory_data.id
+            )
 
 
 def delete_inventory_item(

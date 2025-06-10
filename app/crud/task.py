@@ -173,9 +173,8 @@ def update_tasks_in_project(
         project_id: int,
         tasks_data: list[TaskBackend],
         admin_id: int
-) -> list[TaskOut]:
+):
     """Actualiza múltiples tareas en un proyecto"""
-    updated_tasks = []
     for task_data in tasks_data:
         # Revisar Booleanos que indican si es una actualización o creación
         if task_data.updated:
@@ -201,8 +200,6 @@ def update_tasks_in_project(
                 project_id=project_id,
                 task_id=task_data.id
             )
-
-    return updated_tasks
 
 
 

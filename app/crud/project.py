@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from datetime import datetime, timezone
 
 from app.crud.expense import expense_to_out
+from app.crud.inventory import update_inventories_in_project
 from app.crud.task import update_tasks_in_project
 from app.models.expense import ExpenseStatus
 from app.models.project import Project, ProjectCreate, ProjectUpdate, ProjectOut, team_member_to_out
@@ -145,6 +146,13 @@ def update_project(*, session: Session, project_id: int, project_data: ProjectUp
                 project_id=project_id,
                 tasks_data=project_data.tasks_backend,
                 admin_id=project.admin_id
+            )
+        # Verifica si se han actualizado el Inventory
+        if project_data.inventory_backend:
+            update_inventories_in_project(
+                session=session,
+                project_id=project_id,
+                inventories_data=project_data.inventory_backend
             )
 
         return project

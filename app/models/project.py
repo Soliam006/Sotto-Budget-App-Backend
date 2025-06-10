@@ -4,13 +4,13 @@ from pydantic import BaseModel, model_validator
 from typing import Optional, List, Dict
 from enum import Enum
 
-from .expense import ExpenseOut
+from .expense import ExpenseOut, ExpenseBackend
 from .project_expense import ProjectExpenseLink
 from .project_team import ProjectTeamLink
 from .task import TaskOut, TaskBackend
-from .user import Admin, Client, ClientSimpleOut, Worker, WorkerRead
+from .user import Admin, Client, ClientSimpleOut, Worker, WorkerRead, WorkerDataBackend
 from .project_client import ProjectClient
-from .inventory import InventoryItem
+from .inventory import InventoryItem, InventoryBackend
 
 
 class ProjectStatus(str, Enum):
@@ -70,6 +70,9 @@ class ProjectUpdate(SQLModel):
     end_date: Optional[datetime] = Field(None)
     status: Optional[ProjectStatus] = Field(None)
     tasks_backend: Optional[List[TaskBackend]] = None  # Lista de tareas asociadas al proyecto
+    inventory_backend: Optional[List[InventoryBackend]] = None  # Lista de items de inventario asociados al proyecto
+    team_backend: Optional[List[WorkerDataBackend]] = None  # Lista de miembros del equipo asociados al proyecto
+    expenses_backend: Optional[List[ExpenseBackend]] = None  # Lista de gastos asociados al proyecto
 
     # Validación condicional de fechas
     @model_validator(mode="after")

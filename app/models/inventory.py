@@ -69,3 +69,10 @@ class InventoryItemUpdate(SQLModel):
 
     class Config:
         validate_by_name = True
+
+
+class InventoryBackend(InventoryItemUpdate):
+    id: int
+    created: bool
+    updated: bool
+    deleted: bool
