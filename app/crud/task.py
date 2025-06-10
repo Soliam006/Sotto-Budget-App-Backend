@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from sqlalchemy import or_, and_
 
 from app.models.project import Project
-from app.models.task import TaskCreate, TaskOut, Task, task_to_out, TaskUpdate
+from app.models.task import TaskCreate, TaskOut, Task, task_to_out, TaskUpdate, TaskBackend
 from app.models.user import UserRole, Worker, Admin
 from app.crud.notification import notify_task_deletion, notify_task_update, send_task_notifications
 
@@ -135,9 +135,9 @@ def update_existing_task(
             )
 
     # Validar fecha
-    if task_data.due_date and task_data.due_date < datetime.now(timezone.utc):
+    if task_data.due_date and task_data.due_date.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Due date cannot be in the past"
         )
     # Capturar cambios antes de actualizar
@@ -166,6 +166,45 @@ def update_existing_task(
         )
 
     return task_to_out(task)
+
+
+def update_tasks_in_project(
+        session: Session,
+        project_id: int,
+        tasks_data: list[TaskBackend],
+        admin_id: int
+) -> list[TaskOut]:
+    """Actualiza múltiples tareas en un proyecto"""
+    updated_tasks = []
+    for task_data in tasks_data:
+        # Revisar Booleanos que indican si es una actualización o creación
+        if task_data.updated:
+            # Actualizar tarea existente
+             update_existing_task(
+                session=session,
+                task_id=task_data.id,
+                task_data=TaskUpdate.model_validate(task_data),
+                project_id=project_id
+            )
+        elif task_data.created:
+            # Crear nueva tarea
+             create_task_for_project(
+                session=session,
+                project_id=project_id,
+                task_data=TaskCreate.model_validate(task_data),
+                admin_id=admin_id
+            )
+        else:
+            # Eliminar tarea existente
+            delete_project_task(
+                session=session,
+                project_id=project_id,
+                task_id=task_data.id
+            )
+
+    return updated_tasks
+
+
 
 
 def delete_project_task(

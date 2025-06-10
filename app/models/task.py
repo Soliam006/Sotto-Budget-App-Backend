@@ -115,3 +115,14 @@ def task_to_out(task: Task) -> TaskOut:
         updated_at=task.updated_at,
         due_date=task.due_date
     )
+
+
+class TaskBackend(TaskUpdate):
+    """
+    Extiende TaskCreate para incluir project_id y admin_id.
+    Estos campos se asignan automáticamente al crear una tarea.
+    """
+    id: int
+    created: bool
+    updated: bool
+    deleted: bool

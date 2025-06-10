@@ -7,7 +7,7 @@ from enum import Enum
 from .expense import ExpenseOut
 from .project_expense import ProjectExpenseLink
 from .project_team import ProjectTeamLink
-from .task import TaskOut
+from .task import TaskOut, TaskBackend
 from .user import Admin, Client, ClientSimpleOut, Worker, WorkerRead
 from .project_client import ProjectClient
 from .inventory import InventoryItem
@@ -69,6 +69,7 @@ class ProjectUpdate(SQLModel):
     start_date: Optional[datetime] = Field(None)
     end_date: Optional[datetime] = Field(None)
     status: Optional[ProjectStatus] = Field(None)
+    tasks_backend: Optional[List[TaskBackend]] = None  # Lista de tareas asociadas al proyecto
 
     # Validación condicional de fechas
     @model_validator(mode="after")

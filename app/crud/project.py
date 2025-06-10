@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from datetime import datetime, timezone
 
 from app.crud.expense import expense_to_out
+from app.crud.task import update_tasks_in_project
 from app.models.expense import ExpenseStatus
 from app.models.project import Project, ProjectCreate, ProjectUpdate, ProjectOut, team_member_to_out
 from app.models.project_client import ProjectClient
@@ -120,12 +121,14 @@ def add_client_to_project(
 def update_project(*, session: Session, project_id: int, project_data: ProjectUpdate) -> Project:
     # Busca el proyecto por ID
     project = session.exec(select(Project).where(Project.id == project_id)).first()
+
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     # Actualiza los campos del proyecto con los datos proporcionados
     for key, value in project_data.model_dump(exclude_unset=True).items():
-        setattr(project, key, value)
+        if hasattr(project, key):
+            setattr(project, key, value)
 
     # Actualiza la fecha de modificación
     project.updated_at = datetime.now(timezone.utc)
@@ -134,6 +137,16 @@ def update_project(*, session: Session, project_id: int, project_data: ProjectUp
         session.add(project)  # Agrega el proyecto actualizado a la sesión
         session.commit()  # Guarda los cambios en la base de datos
         session.refresh(project)  # Refresca el objeto para obtener los datos actualizados
+
+        # Verficar los cambios de TASKS
+        if project_data.tasks_backend:
+            update_tasks_in_project(
+                session=session,
+                project_id=project_id,
+                tasks_data=project_data.tasks_backend,
+                admin_id=project.admin_id
+            )
+
         return project
     except ValidationError as e:
         session.rollback()  # Revierte los cambios en caso de error

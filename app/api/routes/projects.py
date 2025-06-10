@@ -168,11 +168,12 @@ async def update_project(
         session: Session = Depends(get_session)
 ):
     try:
-        updated_project = crud.update_project(
+        crud.update_project(
             session=session,
             project_id=project_id,
             project_data=project
         )
+        new_project = crud.get_project_details(session=session, project_id=project_id)
     except HTTPException as http_exc:
         return JSONResponse(
             status_code=http_exc.status_code,
@@ -192,7 +193,7 @@ async def update_project(
             }
         )
 
-    return Response(statusCode=200, data=updated_project, message="Project updated successfully")
+    return Response(statusCode=200, data=new_project, message="Project updated successfully")
 
 # --------------------------------- DELETE --------------------------------
 @router.delete("/{project_id}", response_model=Response,
