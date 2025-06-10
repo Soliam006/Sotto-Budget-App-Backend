@@ -112,3 +112,101 @@ def get_user_activities(
                 "message": str(e)
             }
         )
+
+
+@router.put(
+    "/{activity_id}/read",
+    response_model=Response,
+    dependencies=[Depends(get_current_user)]
+)
+def mark_activity_as_read(
+    activity_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Mark an activity as read."""
+    try:
+        updated_activity = notification_crud.mark_activity_as_read(
+            session=session,
+            activity_id=activity_id
+        )
+
+        if not updated_activity:
+            return Response(statusCode=404, data=None, message="Activity not found or already read")
+
+        return Response(
+            statusCode=200,
+            data=ActivityOut.from_activity(updated_activity),
+            message="Activity marked as read"
+        )
+
+    except HTTPException as http_exc:
+        return JSONResponse(
+            status_code=http_exc.status_code,
+            content={
+                "statusCode": http_exc.status_code,
+                "data": None,
+                "message": http_exc.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )
+
+
+@router.put (
+    "/{project_id}/mark_all_read",
+    response_model=Response,
+    dependencies=[Depends(get_current_user)]
+)
+def mark_all_activities_as_read(
+    project_id: int,
+    session: Session = Depends(get_session)
+):
+    """Mark all activities for a project as read."""
+    try:
+        updated_activities = notification_crud.mark_all_activities_as_read(
+            session=session,
+            project_id=project_id
+        )
+
+        if not updated_activities:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "statusCode": 404,
+                    "data": None,
+                    "message": "No activities found for this project"
+                }
+            )
+
+        return Response(
+            statusCode=200,
+            data=updated_activities,
+            message="Activities marked as read"
+        )
+
+    except HTTPException as http_exc:
+        return JSONResponse(
+            status_code=http_exc.status_code,
+            content={
+                "statusCode": http_exc.status_code,
+                "data": None,
+                "message": http_exc.detail
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "statusCode": 500,
+                "data": None,
+                "message": str(e)
+            }
+        )

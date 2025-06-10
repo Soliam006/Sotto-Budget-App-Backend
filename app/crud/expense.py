@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from starlette import status
 
 from app.crud.notification import notify_expense_deletion, notify_expense_update, send_expense_notifications
-from app.models.expense import ExpenseCreate, Expense, ExpenseUpdate, ExpenseOut
+from app.models.expense import ExpenseCreate, Expense, ExpenseUpdate, ExpenseOut, ExpenseBackend
 from app.models.project import Project
 from app.models.project_expense import ProjectExpenseLink
 
@@ -195,6 +195,36 @@ def update_project_expense(
 
     return expense_to_out(expense=expense, link=link)
 
+def update_expenses_in_project(
+        session: Session,
+        project_id: int,
+        expenses_data: list[ExpenseBackend]
+):
+    """Actualiza múltiples gastos en un proyecto"""
+    for expense_data in expenses_data:
+        # Revisar Booleanos que indican si es una actualización o creación
+        if expense_data.updated:
+            # Actualizar gasto existente
+            update_project_expense(
+                session=session,
+                project_id=project_id,
+                expense_id=expense_data.id,
+                expense_data=ExpenseUpdate.model_validate(expense_data)
+            )
+        elif expense_data.created:
+            # Crear nuevo gasto
+            create_project_expense(
+                session=session,
+                project_id=project_id,
+                expense_data=ExpenseCreate.model_validate(expense_data)
+            )
+        else:
+            # Eliminar gasto existente
+            delete_project_expense(
+                session=session,
+                project_id=project_id,
+                expense_id=expense_data.id
+            )
 
 def delete_project_expense(
         session: Session,

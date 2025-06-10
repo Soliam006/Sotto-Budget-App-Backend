@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from datetime import datetime, timezone
 
-from app.crud.expense import expense_to_out
+from app.crud.expense import expense_to_out, update_expenses_in_project
 from app.crud.inventory import update_inventories_in_project
 from app.crud.task import update_tasks_in_project
 from app.models.expense import ExpenseStatus
@@ -15,7 +15,8 @@ from app.models.project_client import ProjectClient
 from app.models.project_expense import ProjectExpenseLink
 from app.models.project_team import ProjectTeamLink
 from app.models.task import TaskStatus, task_to_out
-from app.models.user import Admin, Client, Worker, team_out, TeamOut, ClientSimpleOut, WorkerRead, User, UserRole
+from app.models.user import Admin, Client, Worker, team_out, TeamOut, ClientSimpleOut, WorkerRead, User, UserRole, \
+    WorkerDataBackend
 
 
 def get_project_id(*, session: Session, project_id: int) -> Project | None:
@@ -155,6 +156,21 @@ def update_project(*, session: Session, project_id: int, project_data: ProjectUp
                 inventories_data=project_data.inventory_backend
             )
 
+        if project_data.team_backend:
+            updated_project_team(
+                session=session,
+                project_id=project_id,
+                team_data=project_data.team_backend
+            )
+
+        if project_data.expenses_backend:
+            update_expenses_in_project(
+                session=session,
+                project_id=project_id,
+                expenses_data=project_data.expenses_backend
+            )
+
+
         return project
     except ValidationError as e:
         session.rollback()  # Revierte los cambios en caso de error
@@ -164,6 +180,28 @@ def update_project(*, session: Session, project_id: int, project_data: ProjectUp
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def updated_project_team(
+        session: Session,
+        project_id: int,
+        team_data: list[WorkerDataBackend]
+):
+    """ Actualiza el equipo de un proyecto con los datos proporcionados."""
+    for worker_data in team_data:
+        if worker_data.created:
+            # Si el trabajador es nuevo, lo agregamos al proyecto
+            add_worker_to_project(
+                session=session,
+                project_id=project_id,
+                worker_id=worker_data.id,
+                role=worker_data.role
+            )
+        elif worker_data.deleted:
+            # Si el trabajador es eliminado, lo quitamos del proyecto
+            remove_worker_from_project(
+                session=session,
+                project_id=project_id,
+                worker_id=worker_data.worker_id
+            )
 
 def add_worker_to_project(session: Session, project_id: int, worker_id: int, role: str = "Team Member") -> TeamOut:
     # Verifica si el proyecto existe

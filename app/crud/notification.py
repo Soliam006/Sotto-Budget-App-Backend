@@ -282,3 +282,43 @@ def get_user_activities(session: Session, user_id: int) -> List[Activity]:
 
 
     return activities
+
+
+def mark_activity_as_read(session, activity_id):
+    """Mark an activity as read for a specific user."""
+    activity = session.get(Activity, activity_id)
+    if not activity:
+        raise HTTPException(
+            status_code=404,
+            detail="Activity not found"
+        )
+
+    # Mark the activity as read
+    activity.is_read = True
+    session.add(activity)
+    session.commit()
+
+    return activity
+
+
+def mark_all_activities_as_read(session, project_id):
+    """Mark all activities for a project as read."""
+    activities = session.exec(
+        select(Activity).where(Activity.project_id == project_id, Activity.is_read == False)
+    ).all()
+
+    if not activities:
+        raise HTTPException(
+            status_code=404,
+            detail="No unread activities found for this project"
+        )
+
+    # Mark all activities as read
+    for activity in activities:
+        activity.is_read = True
+        session.add(activity)
+
+    # Commit the changes
+    session.commit()
+
+    return activities
